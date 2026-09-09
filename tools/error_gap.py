@@ -1,21 +1,16 @@
-"""Peta kesalahan: di mana buku prediksi kehilangan edge, dipecah per emiten dan per kondisi.
+"""Peta kesalahan: di mana buku prediksi kehilangan edge, per emiten dan per kondisi.
 
-Dipakai untuk memilih perbaikan berikutnya berdasarkan angka, bukan firasat.
-
-    python tools/error_gap.py              # semua baris resolved
-    python tools/error_gap.py --bets-only  # hanya yang dihitung papan skor (buang display 1-hari)
-    python tools/error_gap.py --days 30    # 30 hari terakhir saja
+    python tools/error_gap.py
+    python tools/error_gap.py --bets-only   # hanya yang dihitung papan skor
+    python tools/error_gap.py --days 30
     python tools/error_gap.py --selftest
 
-Definisi `edge` = gerak nyata DIARAHKAN ke klaim, dalam poin persen:
-UP  -> +actual_pct, DOWN -> -actual_pct, FLAT -> -|actual_pct|.
-Positif berarti arah yang diklaim memang terjadi. Berbeda dari win-rate: win-rate
-menghitung berapa sering benar, edge menghitung seberapa besar benarnya.
+`edge` = gerak nyata diarahkan ke klaim, dalam poin persen: UP +actual_pct, DOWN
+-actual_pct, FLAT -|actual_pct|. Win-rate menghitung seberapa sering benar, edge
+menghitung seberapa besar benarnya.
 
-PERINGATAN BACA: tiap ember punya base rate SENDIRI. Saham tenang lebih sering
-berakhir di dalam band FLAT, jadi win-rate-nya naik tanpa skill apa pun. Bandingkan
-antar-ember memakai kolom edge, dan sebelum memasang gerbang dari temuan di sini,
-lewatkan dulu ke `basecheck.py` (base rate cocok-tanggal). Lihat NEXT_UPDATES.md.
+Tiap ember punya base rate sendiri, jadi bandingkan antar-ember lewat kolom edge, bukan
+win-rate. Kandidat gerbang dari sini harus lewat tools/gate_trial.py atau basecheck.py dulu.
 """
 from __future__ import annotations
 

@@ -1,19 +1,14 @@
-"""Audit kesehatan provider LLM — pakai payload PRODUKSI, bukan "hai".
+"""Audit kesehatan provider LLM memakai payload produksi.
 
-Kenapa ada: pin provider mati diam-diam (kunci dicabut, kredit habis, model
-di-retire). Gejalanya bukan crash, tapi prediksi yang pelan-pelan jadi hasil
-fallback. Skrip ini menembak tiap pasangan (provider, model) yang BENAR-BENAR
-dipakai chain produksi, tiga lapis:
+Pin provider mati diam-diam: kunci dicabut, kredit habis, model ditarik. Gejalanya bukan
+crash melainkan prediksi yang pelan-pelan jadi hasil fallback. Skrip ini menembak tiap
+pasangan (provider, model) yang dipakai chain produksi dalam tiga lapis: katalog /models,
+satu panggilan JSON, dan tool-call untuk chain yang memang memakai tool.
 
-  1. GET /models        -> model masih terdaftar? (retire senyap)
-  2. chat + want_json   -> JSON produksi ter-parse? (bukan cuma HTTP 200)
-  3. tool-call          -> hanya utk chain *_TOOL_CHAIN; di sinilah model
-                           lulus JSON tapi menggantung sampai timeout
+    python tools/provider_audit.py
+    python tools/provider_audit.py --selftest
 
-    python tools/provider_audit.py            # audit penuh
-    python tools/provider_audit.py --selftest # cek logika grading
-
-Exit code 1 kalau ADA chain produksi yang nol anggota sehat = engine buta.
+Exit code 1 kalau ada chain produksi tanpa satu pun anggota sehat.
 """
 from __future__ import annotations
 

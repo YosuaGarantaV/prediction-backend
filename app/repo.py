@@ -977,10 +977,9 @@ def prediction_stats() -> dict:
 
 
 def count_predictions() -> int:
-    """Jumlah baris tabel prediksi. Dipakai run_cycle untuk melaporkan berapa baris BARU yang
-    benar-benar ditulis — `_commit` mengembalikan id juga saat duplikat di-skip dan 0 saat
-    digerbang, jadi menghitung panggilan `_commit` melaporkan angka yang lebih besar dari
-    kenyataan (9 Sep 2026: log bilang 17, baris baru cuma 5)."""
+    """Jumlah baris tabel prediksi. Dipakai run_cycle untuk melaporkan berapa baris baru yang
+    benar-benar ditulis; menghitung panggilan `_commit` melebihkan angkanya karena duplikat
+    dan keputusan yang digerbang tetap terhitung."""
     return get_conn().execute("SELECT COUNT(*) FROM predictions").fetchone()[0]
 
 

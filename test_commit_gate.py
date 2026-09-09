@@ -1,8 +1,8 @@
-"""Cek gate pencatatan _commit (python test_commit_gate.py) — monkeypatch, tanpa DB.
-Kontrak: FLAT TIDAK dicatat sbg taruhan pada horizon MANA PUN (trade tetap dieksekusi,
-transkrip tetap terarsip) — sejak 2026-09-09 termasuk companion 1-hari, lihat
-test_flat_1d_tidak_lagi_dicatat; DOWN/UP tetap dicatat; resolved_predictions
-mengecualikan forecast display 1-hari."""
+"""Cek gate pencatatan _commit (python test_commit_gate.py), monkeypatch, tanpa DB.
+
+Kontrak: FLAT tidak dicatat sebagai taruhan pada horizon mana pun, sementara trade tetap
+dieksekusi dan transkrip tetap terarsip; UP/DOWN tetap dicatat; resolved_predictions
+mengecualikan forecast tampilan 1-hari."""
 from app.agents import orchestrator as orch
 
 _ORIG_RESOLVED = orch.repo.resolved_predictions  # dipulihkan di test yg butuh fungsi asli
@@ -80,11 +80,9 @@ def test_directional_still_recorded():
 
 
 def test_flat_1d_tidak_lagi_dicatat():
-    """DIBALIK 2026-09-09. Dulu companion 1-hari FLAT boleh dicatat karena "realisasi 45%,
-    band ±1% masuk akal untuk 1 hari" — angka mutlak tanpa pembanding. Diuji ulang terhadap
-    dasar cocok-tanggal (tools/gate_trial.py): pada populasi yang benar-benar dihitung papan
-    skor, FLAT menang 27,9% sementara dasarnya 59,3% (selisih -30,7 pp, CI95 [-47,6; -13,5]).
-    Menebak "diam" pada saham likuid acak lebih sering benar. Trade tetap dieksekusi."""
+    """Companion 1-hari FLAT tidak lagi dicatat. Diuji terhadap dasar pasar yang dicocokkan
+    per tanggal (tools/gate_trial.py): win-rate FLAT ada di bawah dasarnya sendiri, jadi
+    mencatatnya cuma menambah baris yang kalah dari tebakan acak. Trade tetap dieksekusi."""
     saved, acted, _ = _setup()
     orch._commit(_mk("FLAT", horizon=1))
     assert not saved, "FLAT tak boleh lagi masuk tabel prediksi"
@@ -93,9 +91,8 @@ def test_flat_1d_tidak_lagi_dicatat():
 
 
 def test_count_predictions_menghitung_baris_bukan_panggilan():
-    """Angka "prediksi dicatat" harus bisa dihitung ulang dari tabel. `_commit` mengembalikan
-    id juga saat duplikat di-skip dan 0 saat digerbang, jadi menghitung panggilan melaporkan
-    lebih besar dari kenyataan (9 Sep 2026 live: log 17, baris baru 5)."""
+    """Angka "prediksi dicatat" harus bisa dihitung ulang dari tabel. Menghitung panggilan
+    `_commit` melebihkan karena duplikat dan keputusan yang digerbang ikut terhitung."""
     import sqlite3
     from app import repo
     conn = sqlite3.connect(":memory:")

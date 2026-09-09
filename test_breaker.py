@@ -39,10 +39,9 @@ def test_non_capacity_error_no_trip():
 
 
 def test_timeout_sekali_tidak_men_trip():
-    """Timeout = jawaban lambat, BUKAN provider menolak. Diukur 9 Sep 2026 di live: kegagalan
-    nara/nara_smart berbunyi "Request timed out", dan karena dulu disamakan dengan 429 satu
-    jawaban lambat menyalakan backoff eksponensial (tercatat 'trip beruntun ke-2' = 180s).
-    Selama cooldown itu 9 ticker dilewati LLM_STRICT dalam satu siklus."""
+    """Timeout adalah jawaban lambat, bukan provider yang menolak. Kalau disamakan dengan
+    rate-limit, satu jawaban lambat menyalakan backoff eksponensial dan ticker sesudahnya
+    ikut jatuh selama cooldown."""
     _reset_all()
     llm._trip("nara", Exception("Request timed out."))
     assert not llm._cooling("nara"), "timeout pertama tak boleh membuang provider"

@@ -335,11 +335,9 @@ USE_COUNCIL = _env_bool("USE_COUNCIL", True)
 # dan kunci berita berubah (memo). Pin PRIMARY = nara_smart (distinct dari analis/CTO/dewan).
 SENTIMENT_AGENT = _env_bool("SENTIMENT_AGENT", True)
 SENT_FRESH_H = _env_int("SENT_FRESH_H", 12)
-# AUDIT 2026-09-09 (tools/provider_audit.py): chain ini 0/3 sehat — minimax-m3-free 404
-# (model dicabut gateway), mistral-small 429, deepseek-v4-flash balas non-JSON. Artinya agen
-# sentimen SUDAH berjalan tanpa LLM sama sekali: tag impact/sentimen berita = leksikon saja.
-# Dipindah ke model yang diukur hidup hari ini; slot & provider TIDAK berubah (pin peran tetap
-# distinct). Ulangi audit tiap ~2 minggu — pin di sini membusuk diam-diam.
+# Pin di sini membusuk diam-diam: model ditarik gateway, kuota habis, kunci dicabut. Kalau
+# ketiganya mati, agen sentimen jatuh ke leksikon tanpa tanda apa pun. Periksa berkala dengan
+# tools/provider_audit.py, dan jaga provider tiap slot tetap berbeda dari chain peran lain.
 SENTIMENT_CHAIN = [
     ("nara_free", NARA_GLM_FREE),   # diukur: JSON ok 7,8s (minimax-m3-free = 404)
     ("mistral", MISTRAL_SMALL),  # 0,8s - sentimen dipanggil sering (~62x/hari), model kecil
@@ -609,9 +607,8 @@ LLM_RETRY_BACKOFF = _env_int("LLM_RETRY_BACKOFF", 6)  # detik (×percobaan)
 CB_COOLDOWN = _env_int("CB_COOLDOWN_S", 90)          # rate-limit/timeout biasa (kuota per-menit)
 CB_COOLDOWN_MAX = _env_int("CB_COOLDOWN_MAX_S", 900)  # plafon backoff eksponensial per-menit (15 mnt)
 CB_COOLDOWN_DAY = _env_int("CB_COOLDOWN_DAY_S", 7200)  # "per day/daily" limit → istirahat 2 jam
-# Timeout BUKAN penolakan provider, cuma jawaban lambat (diukur 9 Sep 2026: kegagalan nara di
-# live berbunyi "Request timed out", bukan 429). Cooldown-nya DATAR dan pendek, dan baru menyala
-# pada timeout KEDUA beruntun — lihat llm._trip. Satu jawaban lambat tak boleh membuang siklus.
+# Timeout bukan penolakan provider, cuma jawaban lambat, jadi cooldown-nya datar dan pendek
+# serta baru menyala pada timeout kedua beruntun (lihat llm._trip).
 CB_TIMEOUT_COOLDOWN = _env_int("CB_TIMEOUT_COOLDOWN_S", 30)
 
 # --- Auth dashboard (login web, lihat app/auth.py) ---

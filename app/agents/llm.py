@@ -99,18 +99,15 @@ def _cooling(provider: str) -> bool:
 
 
 def _trip(provider: str, err: Exception) -> None:
-    """Nyalakan cooldown sesuai jenis error. 'per day/daily' = kuota harian habis → istirahat
-    lama (2 jam); 429/rate/timeout biasa (kuota per-menit) → pendek (90 dtk). Error lain (JSON,
-    dll) TIDAK men-trip (bukan masalah kapasitas provider)."""
+    """Nyalakan cooldown sesuai jenis error. Kuota harian habis: istirahat panjang. Rate-limit
+    per-menit: pendek dengan backoff eksponensial. Timeout: datar dan pendek, perlu dua kali
+    beruntun. Error lain (JSON rusak, dll) tidak men-trip karena bukan soal kapasitas."""
     s = str(err).lower()
     is_limit = (isinstance(err, RateLimitError) or "too many" in s or "429" in s or "rate" in s)
-    # TIMEOUT DIPISAH DARI RATE-LIMIT (diukur 9 Sep 2026 di live). Kegagalan nara/nara_smart
-    # hari itu berbunyi "Request timed out", bukan 429 — provider tidak menolak, cuma lambat
-    # menjawab prompt analis 10rb token. Menyamakannya dengan rate-limit membuat SATU jawaban
-    # lambat menyalakan backoff eksponensial (tercatat "trip beruntun ke-2" = 180s), dan selama
-    # itu SEMUA ticker berikutnya jatuh: 9 dilewati LLM_STRICT dalam satu siklus. Sekarang
-    # timeout perlu DUA kali beruntun baru men-trip, dengan cooldown DATAR (tanpa eskalasi) —
-    # cukup menahan provider yang benar-benar tersedak, tanpa membuang satu siklus penuh.
+    # Timeout dipisah dari rate-limit. Provider yang lambat menjawab prompt besar bukan
+    # provider yang menolak, dan kalau disamakan, satu jawaban lambat menyalakan backoff
+    # eksponensial yang menjatuhkan seluruh ticker sesudahnya. Timeout perlu dua kali
+    # beruntun untuk men-trip, dengan cooldown datar tanpa eskalasi.
     if "per day" in s or "daily" in s or "per-day" in s:
         cd, strikes = config.CB_COOLDOWN_DAY, 0
     elif not is_limit and ("timed out" in s or "timeout" in s):

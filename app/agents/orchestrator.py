@@ -693,14 +693,10 @@ def _commit(decision: dict) -> int:
     # realisasi cuma 16-24% (forensik 2026-07-07, n=153 non-display) → mencatatnya menyeret
     # win-rate & kalibrasi. Trade (mis. SELL exit posisi) tetap dieksekusi; companion 1-hari
     # tetap dicatat (display "besok", band ±1% masuk akal utk 1 hari, realisasi 45%).
-    # DIPERLUAS 2026-09-09 ke horizon 1 juga. Pengecualian h=1 dulu dibela dengan "realisasi
-    # 45%, band ±1% masuk akal untuk 1 hari" — angka MUTLAK, tanpa pembanding. Diuji ulang
-    # terhadap dasar COCOK-TANGGAL (`tools/gate_trial.py`, n=581 FLAT, 37 hari bursa):
-    # menang 48,0% sementara dasarnya 57,6%, selisih -12,1 pp, CI95 [-18,5; -6,3] seluruhnya
-    # di bawah nol. Menebak "diam" pada saham likuid acak lebih sering benar daripada FLAT
-    # dari mesin ini. Paling parah di saham liar (vol ex-ante >5%): -32,0 pp, CI [-39,0; -23,5].
-    # Trade tetap dieksekusi lewat paper.act_on_decision di bawah; yang dihentikan hanya
-    # PENCATATANNYA sebagai taruhan.
+    # FLAT tidak dicatat sebagai taruhan pada horizon mana pun. Diuji terhadap dasar pasar
+    # yang dicocokkan per tanggal (tools/gate_trial.py): win-rate FLAT ada di bawah dasarnya
+    # sendiri, artinya menebak "diam" pada saham likuid acak lebih sering benar. Trade tetap
+    # dieksekusi di bawah; yang dihentikan hanya pencatatannya.
     flat_skip = decision["direction"] == "FLAT"
     _supersede_stale(decision["ticker"],
                      None if flat_skip else decision["direction"],
@@ -982,11 +978,9 @@ def run_cycle() -> dict:
             continue
 
     paper.snapshot()
-    # `made` = keputusan yang DIPROSES, bukan baris yang lahir: `_commit` mengembalikan id
-    # yang sama saat sinyal duplikat di-skip, dan 0 saat digerbang (FLAT / gate bukti / gate
-    # rezim). Sejak gerbang FLAT dipasang, selisihnya melebar — 9 Sep 2026 log berbunyi
-    # "17 prediksi dicatat" padahal baris barunya 5. Angka yang dipercaya orang harus yang
-    # bisa dihitung ulang dari tabel, jadi dua-duanya dilaporkan dan yang utama adalah baris.
+    # `made` menghitung keputusan yang diproses, bukan baris yang lahir: `_commit` mengembalikan
+    # id yang sama saat sinyal duplikat di-skip dan 0 saat digerbang. Angka yang dibaca orang
+    # harus bisa dihitung ulang dari tabel, jadi baris nyata dilaporkan sebagai angka utama.
     written = repo.count_predictions() - rows0
     repo.log("engine", "analyze",
              f"siklus selesai: {len(scored)} discan, {len(llm_done)} via LLM, "

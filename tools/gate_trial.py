@@ -1,22 +1,17 @@
-"""Uji kandidat gerbang SEBELUM dipasang: apakah taruhan yang akan diblokir memang
-di bawah dasar pasar COCOK-TANGGAL, dan apakah sisanya tidak ikut rusak.
+"""Uji kandidat gerbang sebelum dipasang.
 
-Alasan alat ini ada: `tools/error_gap.py` hanya menunjukkan ember mana yang merugi.
-Ember merugi belum tentu layak diblokir — bisa jadi seluruh pasar memang jelek di
-tanggal-tanggal itu. Yang menentukan cuma perbandingan terhadap dasar yang diambil dari
-saham likuid pada TANGGAL dan HORIZON yang sama. Metodenya dipinjam utuh dari
-`basecheck.py` (`_series`, `_matched_base`) supaya angkanya sebanding, ditambah dasar
-untuk klaim FLAT yang tidak ditangani basecheck.
+Ember yang merugi belum tentu layak diblokir: bisa jadi seluruh pasar memang jelek pada
+tanggal-tanggal itu. Yang menentukan adalah perbandingan terhadap dasar dari saham likuid
+pada tanggal dan horizon yang sama. Metodenya mengikuti basecheck.py, ditambah dasar untuk
+klaim FLAT yang tidak ditangani di sana.
 
-    python tools/gate_trial.py                 # semua baris resolved
-    python tools/gate_trial.py --bets-only     # hanya yang dihitung papan skor
+    python tools/gate_trial.py
+    python tools/gate_trial.py --bets-only
     python tools/gate_trial.py --selftest
 
-Vonis LOLOS hanya kalau BATAS ATAS CI95 selisih kelompok yang diblokir < 0, artinya
-taruhan itu benar-benar di bawah pasarnya sendiri, bukan sekadar sial. Kelompok yang
-disisakan tidak boleh turun. Daya uji terbatas: dengan ~40 hari bursa, selisih di bawah
-sekitar 10 pp tidak akan pernah terlihat — kalau CI melebar melewati nol, jawabannya
-"belum tahu", bukan "tidak ada efek".
+Vonis LOLOS hanya kalau batas atas CI95 kelompok yang diblokir ada di bawah nol, dan
+kelompok yang disisakan tidak ikut turun. Daya uji terbatas oleh jumlah hari bursa: CI yang
+melebar melewati nol berarti belum tahu, bukan tidak ada efek.
 """
 from __future__ import annotations
 

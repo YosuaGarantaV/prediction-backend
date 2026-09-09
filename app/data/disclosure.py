@@ -38,18 +38,14 @@ HIGH_VALUE = (
     # FILM dsb. Float kecil + flag regulator = volatilitas/manipulasi tinggi → penggerak nyata.
     "konsentrasi", "hsc", "high shareholding", "notasi khusus", "pemantauan khusus",
     "pemantauan", "efek bersifat ekuitas",
-    # Audit 2026-09-09: dari 300 filing terbaru (2 hari bursa), 7 buah "LAPORAN KEPEMILIKAN
-    # ATAU SETIAP PERUBAHAN KEPEMILIKAN SAHAM PERUSAHAAN TERBUKA" (form pemegang saham
-    # >5%/pengendali/afiliasi) DIBUANG filter lama. Justru itu jejak resmi "siapa sedang
-    # mengumpulkan" — sumber gosip pasar yang biasanya beredar duluan di grup. Kata
-    # "kepemilikan" TIDAK menangkap "Laporan Bulanan Registrasi Pemegang Efek" (138 rutin).
+    # Laporan perubahan kepemilikan pemegang >5%, pengendali, dan afiliasi. Tidak cocok
+    # dengan "Laporan Bulanan Registrasi Pemegang Efek" yang rutin.
     "kepemilikan",
 )
 
 
-# Kata yang HARUS utuh. "uma" sebagai substring ada di dalam "pengUMAn" — diukur 9 Sep 2026:
-# 3 dari 29 filing yang lolos hanyalah "Pengumuman Bursa Pencatatan Tambahan ETF", nol UMA asli,
-# dan live sempat menyimpan 9 baris ETF semacam itu sebagai berita berdampak dalam satu sore.
+# Dicocokkan sebagai kata utuh: "uma" sebagai substring ikut cocok dengan "pengumuman",
+# sehingga pengumuman bursa rutin lolos sebagai UMA.
 _WORD_ONLY = ("uma", "hsc")
 
 
@@ -99,9 +95,8 @@ def _to_utc_iso(tgl: str) -> str:
 _BACKOFF_S = 1800
 _next_try = 0.0
 _last_ok = 0.0
-# Diukur 2026-09-09: 300 filing terbaru cuma mencakup 2 hari bursa (90 & 210 filing/hari) —
-# jendela 40 aman untuk siklus 60 detik, TAPI sesudah backoff 30 menit (290x dalam 30 hari)
-# filing bisa lewat tanpa terbaca. Habis jeda → tarik jendela lebar sekali, lalu balik hemat.
+# IDX menerbitkan 90-210 filing per hari bursa, jadi jendela 40 cukup untuk siklus 60 detik
+# tapi bisa terlewati sesudah backoff 30 menit. Habis jeda: tarik lebar sekali, lalu hemat lagi.
 _WIDE_N = 250
 
 
