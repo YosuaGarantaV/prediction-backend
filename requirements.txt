@@ -1,0 +1,22 @@
+# --- Web ---
+fastapi>=0.110
+uvicorn[standard]>=0.27
+itsdangerous>=2.1        # penandatangan cookie sesi (starlette SessionMiddleware)
+
+# --- Data ---
+yfinance>=0.2.40
+pandas>=2.0
+numpy>=1.24
+feedparser>=6.0
+requests>=2.31
+
+# --- AI agents (multi-provider via OpenAI-compatible API) ---
+openai>=1.30
+# Orkestrasi debat opsional sbg StateGraph (jalur opt-in USE_LANGGRAPH; node membungkus llm.py)
+langgraph>=0.2
+
+# --- Scheduler (agen 24 jam) ---
+APScheduler>=3.10
+
+# --- Config ---
+python-dotenv>=1.0

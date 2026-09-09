@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saham IDX Prediction Engine</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  // Palet kustom "graphite & gold" (bukan slate/cyan default Tailwind):
+  // latar graphite hangat, aksen emas, naik jade, turun koral.
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      colors: {
+        bg: '#0E1213', panel: '#161B1D', elevated: '#20272A',
+        line: '#242C2F', edge: '#3B4649', txt: '#EAE7DE', muted: '#97A6A4',
+        up: '#45C08E', down: '#E4685A', accent: '#D9A441',
+        analyst: '#B48EDE', trader: '#5BB8A8', amber: '#E3B34C',
+      },
+      fontFamily: { sans: ['IBM Plex Sans','sans-serif'], mono: ['IBM Plex Mono','monospace'] },
+    }},
+  };
+</script>
+<style>
+  body { background:#0E1213; }
+  ::-webkit-scrollbar { width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb { background:#3B4649; border-radius:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  .panel { background:#161B1D; border:1px solid #242C2F; }
+  .nav-link { padding:4px 10px; border-radius:6px; color:#97A6A4; }
+  .nav-link:hover { color:#EAE7DE; background:#20272A; }
+  .nav-link.active { color:#D9A441; background:rgba(217,164,65,.12); }
+  @media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important;} }
+  .pulse-dot { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .fade-row { animation: fade .3s ease; }
+  @keyframes fade { from{opacity:0;transform:translateY(-2px)} to{opacity:1;transform:none} }
+</style>
+</head>
+<body class="font-sans text-txt min-h-screen antialiased">
+
+<!-- ============ TOP BAR ============ -->
+<header class="sticky top-0 z-30 backdrop-blur bg-bg/85 border-b border-line">
+  <div class="max-w-[1600px] mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
+    <div class="flex items-center gap-2.5">
+      <svg class="w-7 h-7 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 17l6-6 4 4 8-8M21 7v5M21 7h-5"/>
+      </svg>
+      <div>
+        <h1 class="font-semibold leading-tight tracking-tight">Saham IDX <span class="text-accent">Prediction</span></h1>
+        <p class="text-[11px] text-muted -mt-0.5 font-mono">AI dual-agent · paper trading · 24/7</p>
+      </div>
+    </div>
+
+    <nav class="flex items-center gap-1 text-xs font-medium ml-2">
+      <a href="/" class="nav-link active">Dashboard</a>
+      <a href="/p/prediksi" class="nav-link">Prediksi</a>
+      <a href="/p/portofolio" class="nav-link">Portofolio</a>
+      <a href="/p/sistem" class="nav-link">Sistem</a>
+      <a href="/p/panduan" class="nav-link">Panduan</a>
+    </nav>
+
+    <div class="flex items-center gap-2 ml-auto text-xs">
+      <span id="wibClock" class="px-2.5 py-1 rounded-md bg-elevated border border-edge font-mono text-accent">—:—:— WIB</span>
+      <span id="marketPhase" class="px-2.5 py-1 rounded-md bg-elevated border border-edge font-mono">pasar: —</span>
+      <span id="mode" class="px-2.5 py-1 rounded-md bg-elevated border border-edge font-mono">mode: —</span>
+      <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-elevated border border-edge">
+        <span id="agentDot" class="w-2 h-2 rounded-full bg-up pulse-dot"></span>
+        <span class="font-mono">agents online</span>
+      </span>
+      <input id="searchTicker" placeholder="KODE" maxlength="5" class="px-2 py-1.5 rounded-md bg-elevated border border-edge w-24 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-accent/50">
+      <span class="flex rounded-md border border-edge overflow-hidden font-mono text-[11px]" title="Horizon prediksi (hari bursa) — auto = agen memilih sendiri">
+        <button data-h="" class="hz-btn px-2 py-1.5 bg-accent/20 text-accent cursor-pointer">auto</button>
+        <button data-h="1" class="hz-btn px-2 py-1.5 bg-elevated text-muted hover:text-txt cursor-pointer border-l border-edge">1h</button>
+        <button data-h="3" class="hz-btn px-2 py-1.5 bg-elevated text-muted hover:text-txt cursor-pointer border-l border-edge">3h</button>
+        <button data-h="5" class="hz-btn px-2 py-1.5 bg-elevated text-muted hover:text-txt cursor-pointer border-l border-edge">5h</button>
+      </span>
+      <button id="btnAnalyze" class="px-3 py-1.5 rounded-md bg-up/15 text-up border border-up/40 hover:bg-up/25 transition-colors duration-200 cursor-pointer font-medium">Analisis saham</button>
+      <button id="btnRunCycle" class="px-3 py-1.5 rounded-md bg-accent/15 text-accent border border-accent/40 hover:bg-accent/25 transition-colors duration-200 cursor-pointer font-medium">▶ Run cycle</button>
+      <button id="btnReport" class="px-3 py-1.5 rounded-md bg-elevated border border-edge hover:border-accent/50 transition-colors duration-200 cursor-pointer">Laporan harian</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1600px] mx-auto px-4 py-4 space-y-4">
+
+  <!-- ============ SELAMAT DATANG (pengguna baru; bisa ditutup permanen) ============ -->
+  <section id="onboardBanner" class="hidden panel rounded-xl p-5 border-accent/40">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 class="font-semibold text-base">Baru di sini? Aplikasi ini bekerja sendiri — kamu cukup membaca.</h2>
+        <ol class="mt-2 text-sm text-txt/90 space-y-1.5">
+          <li><span class="text-accent font-mono">1.</span> Mesin AI menganalisis semua saham IDX otomatis, 24 jam. Tidak ada yang perlu kamu jalankan.</li>
+          <li><span class="text-accent font-mono">2.</span> Lihat <b>Sinyal Hari Ini</b> di bawah — saham yang diprediksi naik/turun, dengan alasannya.</li>
+          <li><span class="text-accent font-mono">3.</span> Klik saham mana pun untuk melihat grafik, fundamental, dan debat AI di baliknya.</li>
+        </ol>
+        <p class="mt-2 text-xs text-muted">Semua untung-rugi memakai uang palsu (paper trading). Bukan nasihat keuangan.</p>
+      </div>
+      <div class="flex flex-col gap-2 shrink-0">
+        <a href="/p/panduan" class="px-3 py-1.5 rounded-md bg-accent/15 text-accent border border-accent/40 hover:bg-accent/25 text-xs font-medium text-center">Buka Panduan</a>
+        <button id="btnOnboardClose" class="px-3 py-1.5 rounded-md bg-elevated border border-edge hover:border-accent/50 text-xs cursor-pointer">Mengerti, tutup</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SINYAL HARI INI (inti aplikasi, bahasa manusia) ============ -->
+  <section class="panel rounded-xl p-4">
+    <div class="flex items-baseline justify-between gap-2 flex-wrap">
+      <h2 class="font-semibold text-base">Sinyal Hari Ini</h2>
+      <span class="text-[11px] text-muted">saham dengan prediksi terkuat yang masih berjalan — klik untuk melihat alasannya</span>
+    </div>
+    <div id="signalsBody" class="mt-3 grid gap-3" style="grid-template-columns:repeat(auto-fit,minmax(270px,1fr));">
+      <p class="text-xs text-muted">memuat…</p>
+    </div>
+  </section>
+
+  <!-- ============ KPI ROW ============ -->
+  <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <a href="/p/portofolio" class="panel rounded-xl p-4 block hover:border-accent/50 transition-colors duration-150" title="Klik untuk rincian posisi, transaksi, dan untung-rugi harian">
+      <p class="text-xs text-muted">Modal uang palsu <span class="text-accent">→</span></p>
+      <p id="kpiTotal" class="text-2xl font-semibold font-mono mt-1">—</p>
+      <p id="kpiCash" class="text-[11px] text-muted font-mono mt-0.5">kas — · posisi —</p>
+    </a>
+    <div class="panel rounded-xl p-4" title="Selisih terhadap modal awal — uang palsu, bukan uang sungguhan">
+      <p class="text-xs text-muted">Untung / rugi sejauh ini</p>
+      <p id="kpiPnl" class="text-2xl font-semibold font-mono mt-1">—</p>
+      <p id="kpiPnlPct" class="text-[11px] font-mono mt-0.5">—</p>
+    </div>
+    <div class="panel rounded-xl p-4" title="Dari semua prediksi yang sudah jatuh tempo, berapa persen arah yang benar">
+      <p class="text-xs text-muted">Ketepatan prediksi</p>
+      <p id="kpiWinrate" class="text-2xl font-semibold font-mono mt-1">—</p>
+      <p id="kpiWins" class="text-[11px] text-muted font-mono mt-0.5">—</p>
+    </div>
+    <div class="panel rounded-xl p-4" title="Naik-turunnya total modal uang palsu dari waktu ke waktu">
+      <p class="text-xs text-muted">Perkembangan modal</p>
+      <!-- tinggi DIKUNCI agar Chart.js tidak tumbuh tak terbatas (fix infinite scroll) -->
+      <div class="mt-1" style="height:48px;position:relative;"><canvas id="equitySpark"></canvas></div>
+    </div>
+  </section>
+
+  <!-- ============ SAHAM FOKUS (gaya scalp/swing/invest) ============ -->
+  <section id="focusSection" class="panel rounded-xl p-4 hidden">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="font-semibold">Saham Fokus <span class="text-[11px] text-muted font-normal">— saham pilihanmu yang diberi perhatian ekstra, masing-masing dengan gaya (scalp = harian, swing = mingguan, invest = bulanan)</span></h2>
+    </div>
+    <div id="focusBody" class="grid md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+  </section>
+
+  <!-- ============ KONDISI PASAR (arus asing + makro global) ============ -->
+  <section class="panel rounded-xl px-4 py-2.5 space-y-2">
+    <p class="text-[11px] text-muted">Kondisi pasar sekarang — arus dana investor asing dan pasar dunia (memengaruhi arah IHSG saat buka):</p>
+    <div id="flowChip" class="text-xs font-mono text-muted">memuat arus dana asing…</div>
+    <div class="overflow-x-auto">
+      <div id="macroStrip" class="flex items-center gap-5 text-xs font-mono whitespace-nowrap text-muted">memuat sinyal makro global…</div>
+    </div>
+  </section>
+
+  <!-- ============ KATALIS + IPO (intel pasar ke depan) ============ -->
+  <section class="grid lg:grid-cols-2 gap-4">
+    <div class="panel rounded-xl p-4">
+      <h2 class="font-semibold mb-2">Katalis Mendatang <span class="text-[11px] text-muted font-normal">(forward-looking)</span></h2>
+      <div id="eventsBody" class="max-h-[180px] overflow-y-auto text-xs space-y-1.5">memuat…</div>
+    </div>
+    <div class="panel rounded-xl p-4">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="font-semibold">IPO Mendatang <span class="text-[11px] text-muted font-normal">(dipanen dari berita)</span></h2>
+        <span id="ipoCount" class="text-[11px] font-mono text-accent"></span>
+      </div>
+      <div id="iposBody" class="max-h-[180px] overflow-y-auto text-xs space-y-1.5">memuat…</div>
+    </div>
+  </section>
+
+  <!-- ============ MAIN GRID ============ -->
+  <section class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+
+    <!-- LEFT: chart + watchlist (2 cols) -->
+    <div class="xl:col-span-2 space-y-4">
+
+      <!-- price chart + prediction overlay -->
+      <div class="panel rounded-xl p-4">
+        <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <h2 class="font-semibold">Grafik Harga & Prediksi <span class="text-[11px] text-muted font-normal">— garis emas = harga nyata, garis putus-putus = perkiraan mesin</span></h2>
+            <select id="chartTicker" class="bg-elevated border border-edge rounded-md px-2 py-1 text-sm font-mono cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/50"></select>
+          </div>
+          <div id="chartMeta" class="text-xs font-mono text-muted"></div>
+        </div>
+        <div class="h-[300px]"><canvas id="priceChart"></canvas></div>
+        <div class="flex gap-4 mt-2 text-[11px] text-muted font-mono">
+          <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-0.5 bg-accent"></span>harga aktual</span>
+          <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-0.5 bg-amber" style="border-top:2px dashed #E3B34C"></span>forecast agen</span>
+        </div>
+        <div id="fundaLine" class="mt-2 text-[11px] font-mono text-muted leading-relaxed"></div>
+      </div>
+
+      <!-- AGENT CONVERSATION (debat Analyst <-> Trader) -->
+      <div class="panel rounded-xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-line flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <h2 class="font-semibold">Debat AI di Balik Keputusan <span class="text-[11px] text-muted font-normal">— Analis mengusulkan, Trader mengkritik lalu memutuskan</span></h2>
+            <span id="convTicker" class="text-[11px] font-mono text-accent">—</span>
+          </div>
+          <button id="btnCopyConv" class="px-2.5 py-1 rounded-md bg-elevated border border-edge hover:border-accent/50 transition-colors duration-200 cursor-pointer text-[11px] font-mono">Copy untuk tuning</button>
+        </div>
+        <div class="p-4 space-y-3 max-h-[340px] overflow-y-auto" id="convBody">
+          <p class="text-xs text-muted">Pilih saham untuk melihat debat agen.</p>
+        </div>
+      </div>
+
+      <!-- watchlist table -->
+      <div class="panel rounded-xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-line flex items-center justify-between gap-3">
+          <h2 class="font-semibold whitespace-nowrap" title="Semua saham yang dipantau. Klik baris untuk grafik; klik panah untuk halaman detail">Semua Saham Terpantau</h2>
+          <span class="flex rounded-md border border-edge overflow-hidden font-mono text-[11px]" title="Tampilkan prediksi untuk horizon berapa hari">
+            <button data-hv="" class="hv-btn px-2 py-1 bg-accent/20 text-accent cursor-pointer">utama</button>
+            <button data-hv="1" class="hv-btn px-2 py-1 bg-elevated text-muted hover:text-txt cursor-pointer border-l border-edge">besok</button>
+            <button data-hv="3" class="hv-btn px-2 py-1 bg-elevated text-muted hover:text-txt cursor-pointer border-l border-edge">3h</button>
+            <button data-hv="5" class="hv-btn px-2 py-1 bg-elevated text-muted hover:text-txt cursor-pointer border-l border-edge">5h</button>
+            <button data-hv="10" class="hv-btn px-2 py-1 bg-elevated text-muted hover:text-txt cursor-pointer border-l border-edge">10h</button>
+          </span>
+          <input id="watchlistSearch" type="search" oninput="renderWatchlist()" autocomplete="off"
+                 placeholder="Cari saham…"
+                 class="flex-1 min-w-0 max-w-[180px] bg-elevated border border-edge rounded-md px-3 py-1.5
+                        text-xs font-mono text-txt placeholder:text-muted focus:outline-none focus:border-accent">
+        </div>
+        <div class="overflow-auto max-h-[460px]">
+          <table class="w-full text-sm">
+            <thead class="text-muted text-xs border-b border-line bg-elevated/40 sticky top-0 bg-panel z-10">
+              <tr>
+                <th class="text-left font-medium px-4 py-2">Saham</th>
+                <th class="text-right font-medium px-3 py-2">Harga</th>
+                <th class="text-right font-medium px-3 py-2" title="Perubahan harga hari ini">%Hari</th>
+                <th class="text-center font-medium px-3 py-2" title="Indikator 0-100: di bawah 30 = sudah turun banyak (murah), di atas 70 = sudah naik banyak (rawan koreksi)">RSI ⓘ</th>
+                <th class="text-center font-medium px-3 py-2" title="Arah harga yang diprediksi mesin">Arah</th>
+                <th class="text-right font-medium px-3 py-2" title="Seberapa sering prediksi seperti ini benar, berdasarkan rekam jejak nyata mesin">Keyakinan ⓘ</th>
+                <th class="text-right font-medium px-3 py-2" title="Jendela waktu prediksi, dalam hari bursa (Sen-Jum)">Jendela ⓘ</th>
+                <th class="text-right font-medium px-3 py-2" title="Kapan prediksi ini dibuat">Dibuat</th>
+                <th class="text-right font-medium px-4 py-2" title="Harga yang diperkirakan tercapai — tercapai berarti prediksi menang">Target ⓘ</th>
+              </tr>
+            </thead>
+            <tbody id="watchlistBody" class="font-mono"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- posisi & transaksi lengkap ada di halaman Portofolio -->
+      <div class="panel rounded-xl px-4 py-3 flex items-center justify-between text-xs">
+        <span class="text-muted">Posisi terbuka, riwayat transaksi & ledger harian dipindah ke halaman sendiri.</span>
+        <a href="/p/portofolio" class="text-accent hover:underline font-medium">Buka Portofolio →</a>
+      </div>
+    </div>
+
+    <!-- RIGHT: agents feed + news (1 col) -->
+    <div class="space-y-4">
+
+      <!-- agent activity feed -->
+      <div class="panel rounded-xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-line flex items-center justify-between">
+          <h2 class="font-semibold">Aktivitas Mesin <span class="text-[11px] text-muted font-normal">— apa yang sedang dikerjakan, langsung</span></h2>
+          <div class="flex gap-2 text-[10px] font-mono">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-analyst"></span>Analyst</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-trader"></span>Trader</span>
+          </div>
+        </div>
+        <div id="logsFeed" class="max-h-[360px] overflow-y-auto divide-y divide-line/60 text-xs"></div>
+      </div>
+
+      <!-- news feed -->
+      <div class="panel rounded-xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-line flex items-center justify-between">
+          <h2 class="font-semibold">Berita & Sentimen</h2>
+          <div class="flex gap-1 text-[11px] font-mono">
+            <button data-scope="" class="news-tab px-2 py-0.5 rounded bg-accent/20 text-accent cursor-pointer">Semua</button>
+            <button data-scope="local" class="news-tab px-2 py-0.5 rounded hover:bg-elevated cursor-pointer text-muted">Lokal</button>
+            <button data-scope="global" class="news-tab px-2 py-0.5 rounded hover:bg-elevated cursor-pointer text-muted">Global</button>
+          </div>
+        </div>
+        <div id="newsFeed" class="max-h-[360px] overflow-y-auto divide-y divide-line/60"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ KESEHATAN SISTEM (info operator — detail di halaman Sistem) ============ -->
+  <section class="panel rounded-xl px-4 py-2 flex items-center gap-4 flex-wrap text-[11px] font-mono">
+    <a href="/p/sistem" class="text-muted font-semibold hover:text-accent" title="Detail lengkap di halaman Sistem">Kesehatan sistem:</a>
+    <div id="healthStrip" class="flex items-center gap-3 flex-wrap text-muted">memuat…</div>
+    <span id="cooldownStrip" class="text-muted ml-auto"></span>
+  </section>
+
+  <footer class="text-center text-[11px] text-muted font-mono py-6">
+    Bukan nasihat keuangan. Prediksi bersifat probabilistik. Paper money only.
+  </footer>
+</main>
+
+<script>
+// ---------- helpers ----------
+const $ = s => document.querySelector(s);
+const fmtRp = n => 'Rp' + Math.round(n||0).toLocaleString('id-ID');
+const fmtNum = n => (n==null?'—':Number(n).toLocaleString('id-ID',{maximumFractionDigits:2}));
+// Timestamp DB = UTC (aware ISO). Tampilkan SELALU dalam WIB (Asia/Jakarta), bukan potong-string mentah.
+const _WIB = {timeZone:'Asia/Jakarta', hour12:false};
+const wibTime = ts => { const d=ts?new Date(ts):null; return (!d||isNaN(d))?(ts||'').slice(11,19)
+  : d.toLocaleTimeString('id-ID',{..._WIB,hour:'2-digit',minute:'2-digit',second:'2-digit'}); };
+const wibDateTime = ts => { const d=ts?new Date(ts):null; return (!d||isNaN(d))?(ts||'').slice(0,16).replace('T',' ')
+  : d.toLocaleString('id-ID',{..._WIB,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
+const wibDate = ts => { const d=ts?new Date(ts):null; return (!d||isNaN(d))?(ts||'').slice(0,10)
+  : d.toLocaleDateString('id-ID',{..._WIB,day:'2-digit',month:'2-digit',year:'numeric'}); };
+const fmtTok = n => (n==null?'—':Number(n).toLocaleString('id-ID'));
+const sign = n => (n>0?'+':'') + Number(n||0).toFixed(2);
+const upDown = n => n>0 ? 'text-up' : n<0 ? 'text-down' : 'text-muted';
+async function getJSON(u){ const r = await fetch(u); return r.json(); }
+async function postJSON(u){ const r = await fetch(u,{method:'POST'}); return r.json(); }
+
+let currentTicker = null, priceChart = null, sparkChart = null, newsScope = '';
+
+// ---------- KPI / overview ----------
+async function loadOverview(){
+  const d = await getJSON('/api/overview');
+  $('#marketPhase').textContent = 'pasar: ' + d.market_phase;
+  $('#mode').textContent = 'mode: ' + d.mode;
+  const pf = d.portfolio;
+  $('#kpiTotal').textContent = fmtRp(pf.total);
+  $('#kpiCash').textContent = `kas ${fmtRp(pf.cash)} · posisi ${fmtRp(pf.equity)}`;
+  $('#kpiPnl').textContent = fmtRp(pf.pnl);
+  $('#kpiPnl').className = 'text-2xl font-semibold font-mono mt-1 ' + upDown(pf.pnl);
+  $('#kpiPnlPct').textContent = sign(pf.pnl_pct) + '%';
+  $('#kpiPnlPct').className = 'text-[11px] font-mono mt-0.5 ' + upDown(pf.pnl);
+  $('#kpiWinrate').textContent = d.stats.win_rate + '%';
+  $('#kpiWins').textContent = `${d.stats.wins}W / ${d.stats.losses}L · ${d.stats.resolved} taruhan dinilai`
+    + ` · ${d.stats.hidden_superseded ?? 0} tak dinilai`;
+  renderMacro(d.macro);
+  renderFlow(d.flow);
+  renderSpark(d.curve);
+}
+
+function renderFlow(f){
+  if(!f || !f.label){ $('#flowChip').textContent = '(proxy arus asing belum tersedia)'; return; }
+  const c = f.flow_score>0.2?'text-up':f.flow_score<-0.2?'text-down':'text-amber';
+  $('#flowChip').innerHTML =
+    `<span class="text-txt font-semibold">Arus asing (proxy):</span> <span class="${c}">${escapeHtml(f.label)}</span>`
+    + ` · breadth <span class="${f.breadth_up>=50?'text-up':'text-down'}">${f.breadth_up}%</span> naik`
+    + ` (${f.advancers}▲/${f.decliners}▼)`
+    + ` · inflow <span class="text-up">${escapeHtml(f.top_inflow)}</span>`;
+}
+
+function renderMacro(rows){
+  if(!rows || !rows.length){ $('#macroStrip').textContent='(data makro belum tersedia)'; return; }
+  const ihsg = rows.find(r=>r.name==='IHSG');
+  const rest = rows.filter(r=>r.name!=='IHSG');
+  let html = '';
+  if(ihsg){
+    html += `<span class="px-2 py-0.5 rounded bg-accent/15 border border-accent/40 text-accent font-semibold">IHSG ${fmtNum(ihsg.price)} <span class="${upDown(ihsg.change_pct)}">${sign(ihsg.change_pct)}%</span></span><span class="text-edge">|</span>`;
+  }
+  html += rest.map(r =>
+    `<span><span class="text-txt">${r.name}</span> ${fmtNum(r.price)} <span class="${upDown(r.change_pct)}">${sign(r.change_pct)}%</span></span>`
+  ).join('<span class="text-edge">|</span>');
+  $('#macroStrip').innerHTML = html;
+}
+
+function renderSpark(curve){
+  const data = (curve||[]).map(c=>c.total);
+  const ctx = $('#equitySpark');
+  if(sparkChart) sparkChart.destroy();
+  sparkChart = new Chart(ctx, { type:'line',
+    data:{ labels:data.map((_,i)=>i), datasets:[{ data, borderColor:'#D9A441',
+      borderWidth:1.5, pointRadius:0, fill:true,
+      backgroundColor:'rgba(217,164,65,0.08)', tension:0.3 }]},
+    options:{ plugins:{legend:{display:false},tooltip:{enabled:false}},
+      scales:{x:{display:false},y:{display:false}}, animation:false,
+      responsive:true, maintainAspectRatio:false }});
+}
+
+// ---------- saham fokus (mandat gaya) ----------
+const styleBadge = s => ({scalp:'bg-down/15 text-down border-down/40',
+  swing:'bg-trader/15 text-trader border-trader/40',
+  invest:'bg-accent/15 text-accent border-accent/40'}[s] || 'bg-elevated text-muted border-edge');
+async function loadFocus(){
+  let rows; try{ rows = await getJSON('/api/focus'); }catch(e){ return; }
+  $('#focusSection').classList.remove('hidden');
+  if(!rows || !rows.length){
+    $('#focusBody').innerHTML = `<p class="text-xs text-muted md:col-span-2 xl:col-span-3">
+      Belum ada saham fokus. Pilih beberapa saham favoritmu supaya mesin memberinya perhatian ekstra:
+      isi <code class="font-mono text-txt bg-elevated px-1 rounded">FOCUS_TICKERS=BBCA:invest,BBRI:swing,ANTM:scalp</code>
+      di file .env lalu restart engine. Penjelasan gaya ada di <a href="/p/panduan" class="text-accent hover:underline">Panduan</a>.</p>`;
+    return;
+  }
+  $('#focusBody').innerHTML = rows.map(f=>{
+    const p = f.prediction;
+    const pos = f.position;
+    return `<a href="/p/saham?t=${f.ticker}" class="block rounded-lg bg-elevated/40 border border-line p-3 hover:border-accent/50 transition-colors duration-150">
+      <div class="flex items-center gap-2">
+        <span class="font-mono font-semibold">${f.ticker}</span>
+        <span class="px-1.5 py-0.5 rounded border text-[10px] font-mono ${styleBadge(f.style)}">${f.style} · ${f.horizon}h</span>
+        <span class="ml-auto font-mono text-sm">${fmtNum(f.price)} <span class="${upDown(f.change_pct)}">${sign(f.change_pct)}%</span></span>
+      </div>
+      <div class="mt-1.5 text-[11px] font-mono text-muted flex items-center gap-2 flex-wrap">
+        ${p ? `${predBadge(p)} <span>${p.probability.toFixed(0)}% /${p.horizon_days}h · target ${fmtNum(p.target_price)}</span>` : '<span>belum ada prediksi — tunggu siklus fokus</span>'}
+        ${pos ? `<span class="text-txt">posisi ${(pos.qty/100).toFixed(0)} lot</span>` : ''}
+      </div>
+    </a>`;
+  }).join('');
+}
+
+// ---------- katalis & IPO ----------
+async function loadEvents(){
+  const ev = await getJSON('/api/events');
+  if(!ev || !ev.length){ $('#eventsBody').innerHTML='<p class="text-muted">tidak ada katalis terjadwal.</p>'; return; }
+  const ic = i => i==='tinggi'?'bg-down':i==='sedang'?'bg-amber':'bg-muted';
+  $('#eventsBody').innerHTML = ev.slice(0,12).map(e=>`
+    <div class="flex items-start gap-2">
+      <span class="mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${ic(e.impact)}"></span>
+      <div><span class="font-mono text-[10px] text-accent">H-${e.days_ahead}</span>
+        <span class="text-txt">${escapeHtml(e.name)}</span>
+        <span class="text-muted text-[11px]">— ${escapeHtml(e.note)}</span></div>
+    </div>`).join('');
+}
+async function loadIpos(){
+  const ipos = await getJSON('/api/ipos');
+  $('#ipoCount').textContent = ipos && ipos.length ? `${ipos.length} terdeteksi` : '';
+  if(!ipos || !ipos.length){ $('#iposBody').innerHTML='<p class="text-muted">belum ada IPO mendatang terdeteksi dari berita.</p>'; return; }
+  $('#iposBody').innerHTML = ipos.slice(0,12).map(i=>`
+    <div class="flex items-start gap-2">
+      <span class="mt-0.5 text-accent shrink-0">🆕</span>
+      <div>
+        ${i.codes && i.codes.length ? `<span class="font-mono text-[10px] px-1 rounded bg-accent/20 text-accent">${i.codes.map(escapeHtml).join(' ')}</span> ` : ''}
+        ${i.status ? `<span class="text-[10px] px-1 rounded bg-elevated border border-edge text-muted">${escapeHtml(i.status)}</span> ` : ''}
+        ${i.official ? `<span class="text-[10px] px-1 rounded bg-up/20 text-up" title="sumber resmi e-IPO BEI">✓ resmi</span> ` : ''}
+        <a href="${i.url}" target="_blank" rel="noopener" class="text-txt hover:text-accent">${escapeHtml(i.title)}</a>
+        <span class="text-muted text-[11px]">— ${escapeHtml(i.source||'')} · ${wibDate(i.ts)}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ---------- fundamentals line ----------
+function renderFunda(f, msciW){
+  const el = $('#fundaLine'); if(!el) return;
+  let parts = [];
+  if(msciW>0) parts.push(`<span class="text-accent">MSCI ${msciW}%</span>`);
+  if(f){
+    if(f.per) parts.push(`PER ${(+f.per).toFixed(1)}`);
+    if(f.pbv) parts.push(`PBV ${(+f.pbv).toFixed(2)}`);
+    if(f.roe!=null) parts.push(`ROE ${f.roe}%`);
+    if(f.div_yield) parts.push(`div ${f.div_yield}%`);
+    if(f.rec_key) parts.push(`analis <span class="text-txt">${escapeHtml(f.rec_key)}</span>`);
+    if(f.target_price) parts.push(`target ${(+f.target_price).toFixed(0)}`);
+    if(f.sector) parts.push(`<span class="text-muted">${escapeHtml(f.sector)}</span>`);
+  }
+  el.innerHTML = parts.length ? ('Fundamental: ' + parts.join(' · ')) : '<span class="text-muted">fundamental belum di-fetch (akan terisi saat agen menganalisis saham ini)</span>';
+}
+
+// ---------- watchlist ----------
+const DIR_ID = {UP:'NAIK', DOWN:'TURUN', FLAT:'DATAR'};   // label arah berbahasa manusia
+function predBadge(p){
+  if(!p) return '<span class="text-muted">—</span>';
+  const c = p.direction==='UP'?'bg-up/15 text-up border-up/40'
+          : p.direction==='DOWN'?'bg-down/15 text-down border-down/40'
+          : 'bg-elevated text-muted border-edge';
+  const arrow = p.direction==='UP'?'▲':p.direction==='DOWN'?'▼':'■';
+  return `<span class="px-2 py-0.5 rounded border ${c} text-[11px]">${arrow} ${DIR_ID[p.direction]||p.direction}</span>`;
+}
+
+// ---------- SINYAL HARI INI: prediksi berarah terkuat, kalimat biasa ----------
+function renderSignals(){
+  const rows = watchlistRows
+    .filter(r => r.prediction && r.prediction.status==='open' && r.prediction.direction!=='FLAT')
+    .sort((a,b) => b.prediction.probability - a.prediction.probability)
+    .slice(0, 6);
+  if(!rows.length){
+    $('#signalsBody').innerHTML = `<p class="text-xs text-muted">Belum ada sinyal berarah yang kuat saat ini —
+      mesin menganalisis ulang setiap ±12 menit saat bursa buka. Sementara itu, lihat daftar
+      <b>Semua Saham Terpantau</b> di bawah.</p>`;
+    return;
+  }
+  $('#signalsBody').innerHTML = rows.map(r=>{
+    const p = r.prediction;
+    const naik = p.direction==='UP';
+    const alasan = (p.reasoning||'').split('\n').find(l=>l.startsWith('Teknikal:')||l.startsWith('Berita:')) || '';
+    return `<a href="/p/saham?t=${r.ticker}" class="block rounded-lg bg-elevated/40 border border-line p-3 hover:border-accent/50 transition-colors duration-150">
+      <div class="flex items-center gap-2">
+        <span class="px-2 py-0.5 rounded border text-[11px] font-mono ${naik?'bg-up/15 text-up border-up/40':'bg-down/15 text-down border-down/40'}">${naik?'▲ NAIK':'▼ TURUN'}</span>
+        <span class="font-mono font-semibold">${r.ticker}</span>
+        <span class="ml-auto font-mono text-xs text-muted">${fmtNum(r.price)}</span>
+      </div>
+      <p class="mt-1.5 text-sm">${naik?'naik':'turun'} ±${Math.abs(p.expected_pct||0).toFixed(1)}% dalam ${p.horizon_days} hari bursa
+        <span class="text-muted">· keyakinan ${p.probability.toFixed(0)}%</span></p>
+      <div class="mt-1.5 h-1 rounded bg-elevated overflow-hidden" title="keyakinan ${p.probability.toFixed(0)}% — makin penuh makin yakin">
+        <div class="h-full ${naik?'bg-up':'bg-down'}" style="width:${Math.min(100,p.probability)}%"></div>
+      </div>
+      ${alasan?`<p class="mt-1.5 text-[11px] text-muted leading-snug">${escapeHtml(alasan.slice(0,110))}</p>`:''}
+      <p class="mt-1 text-[11px] text-accent">Lihat alasan lengkap →</p>
+    </a>`;
+  }).join('');
+}
+let watchlistRows = [];
+let horizonView = '';   // '' = utama; '1'=besok, '3','5','10'
+document.querySelectorAll('.hv-btn').forEach(b=> b.addEventListener('click', e=>{
+  horizonView = e.target.dataset.hv;
+  document.querySelectorAll('.hv-btn').forEach((x,i)=>{
+    x.className = 'hv-btn px-2 py-1 cursor-pointer' + (i>0?' border-l border-edge':'') +
+      (x.dataset.hv===horizonView ? ' bg-accent/20 text-accent' : ' bg-elevated text-muted hover:text-txt');
+  });
+  renderWatchlist();
+}));
+function renderWatchlist(){
+  const q = ($('#watchlistSearch').value||'').trim().toUpperCase();
+  const rows = q ? watchlistRows.filter(r=>r.ticker.toUpperCase().includes(q)) : watchlistRows;
+  if(!rows.length){
+    $('#watchlistBody').innerHTML = `<tr><td colspan="9" class="px-4 py-6 text-center text-muted">tak ada saham cocok "${q}"</td></tr>`;
+    return;
+  }
+  $('#watchlistBody').innerHTML = rows.map(r=>{
+    const p = horizonView ? ((r.by_horizon||{})[horizonView] || null) : r.prediction;
+    return `<tr class="border-b border-line/50 hover:bg-elevated/40 transition-colors duration-150 cursor-pointer" onclick="selectTicker('${r.ticker}')">
+      <td class="px-4 py-2 font-semibold">${r.ticker} <a href="/p/saham?t=${r.ticker}" onclick="event.stopPropagation()" class="text-muted hover:text-accent text-[11px]" title="halaman detail">↗</a></td>
+      <td class="px-3 py-2 text-right">${fmtNum(r.price)}</td>
+      <td class="px-3 py-2 text-right ${upDown(r.change_pct)}">${sign(r.change_pct)}%</td>
+      <td class="px-3 py-2 text-center ${r.rsi<30?'text-up':r.rsi>70?'text-down':'text-muted'}">${r.rsi??'—'}</td>
+      <td class="px-3 py-2 text-center">${predBadge(p)}</td>
+      <td class="px-3 py-2 text-right">${p?p.probability.toFixed(0)+'%':'—'}</td>
+      <td class="px-3 py-2 text-right text-muted">${p?p.horizon_days+'h':'—'}</td>
+      <td class="px-3 py-2 text-right text-muted text-[11px]" title="${p?('dibuat '+wibDateTime(p.ts)+' WIB'):''}">${p?wibDateTime(p.ts):'—'}</td>
+      <td class="px-4 py-2 text-right">${targetCell(p, r.price)}</td>
+    </tr>`;
+  }).join('');
+}
+// Target + statusnya: harga sudah MENEMBUS target → "✓ tembus" (resolve/analisis ulang segera
+// menyusul); belum → tampilkan % jarak ke target, jelas terbaca tanpa mikir.
+function targetCell(p, price){
+  if(!p || !p.target_price) return '—';
+  const t = +p.target_price;
+  if(price && p.status==='open' && p.direction!=='FLAT'){
+    const hit = (p.direction==='UP' && price>=t) || (p.direction==='DOWN' && price<=t);
+    if(hit) return `${fmtNum(t)} <span class="text-up text-[10px] font-semibold">✓ tembus</span>`;
+    const gap = ((t/price-1)*100).toFixed(1);
+    return `${fmtNum(t)} <span class="text-muted text-[10px]">(${gap>0?'+':''}${gap}%)</span>`;
+  }
+  return fmtNum(t);
+}
+async function loadWatchlist(){
+  const rows = await getJSON('/api/watchlist');
+  watchlistRows = rows;
+  renderSignals();
+  const sel = $('#chartTicker');
+  if(sel.options.length !== rows.length + 1){
+    sel.innerHTML = '<option value="IHSG">IHSG (Indeks)</option>' +
+      rows.map(r=>`<option value="${r.ticker}">${r.ticker}</option>`).join('');
+    if(!currentTicker && rows.length){ currentTicker = rows[0].ticker; sel.value = currentTicker; loadChart(); }
+  }
+  renderWatchlist();
+}
+function selectTicker(t){ currentTicker=t; $('#chartTicker').value=t; loadChart(); }
+
+// ---------- price chart with prediction overlay ----------
+async function loadChart(){
+  if(!currentTicker) return;
+  const d = await getJSON('/api/history/'+currentTicker);
+  const prices = d.prices||[];
+  const labels = prices.map(p=>p.ts.slice(0,10));
+  const closes = prices.map(p=>p.close);
+  const p = d.prediction;
+  renderFunda(d.fundamentals, d.msci_weight);
+
+  // forecast: dari titik terakhir ke target sepanjang horizon
+  let fc = new Array(closes.length).fill(null);
+  let band = new Array(closes.length).fill(null);
+  if(p && p.target_price && closes.length){
+    const last = closes.length-1;
+    fc[last] = closes[last];
+    const h = Math.max(1, p.horizon_days||3);
+    for(let k=1;k<=h;k++){
+      labels.push('+'+k+'h');
+      closes.push(null); fc.push(null); band.push(null);
+    }
+    fc[closes.length-1] = p.target_price;
+    $('#chartMeta').innerHTML = p
+      ? `<span class="${p.direction==='UP'?'text-up':p.direction==='DOWN'?'text-down':'text-muted'}">${DIR_ID[p.direction]||p.direction} ${p.probability.toFixed(0)}%</span>
+         · target ${fmtNum(p.target_price)} · ${sign(p.expected_pct)}% / ${p.horizon_days} hari` : '';
+  } else { $('#chartMeta').textContent = 'belum ada prediksi'; }
+
+  // PENANDA PREDIKSI di chart: kapan dibuat (tanggal + harga entry), arah, dan hasilnya —
+  // segitiga hijau=UP, merah=DOWN, abu=FLAT; tooltip: dibuat kapan (WIB) → win/loss/open.
+  const marks = new Array(closes.length).fill(null);
+  const markStyle = new Array(closes.length).fill('triangle');
+  const markColor = new Array(closes.length).fill('transparent');
+  const markRot = new Array(closes.length).fill(0);
+  const markInfo = {};
+  (d.predictions||[]).forEach(pr=>{
+    const day = (pr.ts||'').slice(0,10);
+    let idx = -1;
+    for(let i=labels.length-1;i>=0;i--){ if(labels[i]<=day && labels[i].length===10){ idx=i; break; } }
+    if(idx<0 || marks[idx]!==null) return;             // 1 penanda per hari (yang terbaru menang)
+    marks[idx] = pr.entry_price;
+    markStyle[idx] = pr.direction==='FLAT' ? 'rectRot' : 'triangle';
+    markRot[idx] = pr.direction==='DOWN' ? 180 : 0;
+    markColor[idx] = pr.direction==='UP' ? '#45C08E' : pr.direction==='DOWN' ? '#E4685A' : '#97A6A4';
+    const hasil = pr.status==='resolved'
+      ? `${pr.outcome==='win'?'✓ MENANG':'✗ kalah'} ${pr.actual_pct>0?'+':''}${pr.actual_pct}%`
+      : 'masih open';
+    markInfo[idx] = `${pr.direction} ${Math.round(pr.probability)}% · dibuat ${wibDateTime(pr.ts)} WIB → ${hasil}`;
+  });
+
+  if(priceChart) priceChart.destroy();
+  priceChart = new Chart($('#priceChart'), {
+    type:'line',
+    data:{ labels, datasets:[
+      { label:'harga', data:closes, borderColor:'#D9A441', borderWidth:2,
+        pointRadius:0, tension:0.25, spanGaps:false },
+      { label:'forecast', data:fc, borderColor:'#E3B34C', borderWidth:2,
+        borderDash:[6,4], pointRadius:0, spanGaps:true },
+      { label:'prediksi', data:marks, showLine:false, pointRadius:5, pointHoverRadius:7,
+        pointStyle:markStyle, pointRotation:markRot, pointBackgroundColor:markColor,
+        pointBorderColor:markColor, spanGaps:false },
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      interaction:{intersect:false, mode:'index'},
+      plugins:{ legend:{display:false},
+        tooltip:{ backgroundColor:'#161B1D', borderColor:'#3B4649', borderWidth:1,
+          callbacks:{ label:(ctx)=>{
+            if(ctx.dataset.label==='prediksi'){ return ctx.raw==null ? null : ('📌 '+(markInfo[ctx.dataIndex]||'prediksi')); }
+            return ctx.raw==null ? null : `${ctx.dataset.label}: ${fmtNum(ctx.raw)}`;
+          }}}},
+      scales:{
+        x:{ grid:{color:'#242C2F'}, ticks:{color:'#97A6A4', maxTicksLimit:8, font:{family:'IBM Plex Mono',size:10}}},
+        y:{ grid:{color:'#242C2F'}, ticks:{color:'#97A6A4', font:{family:'IBM Plex Mono',size:10}}},
+      }, animation:false }});
+  loadConversation();
+}
+
+// ---------- agent conversation ----------
+let lastConvText = '';
+async function loadConversation(){
+  if(!currentTicker) return;
+  $('#convTicker').textContent = currentTicker;
+  const c = await getJSON('/api/conversation/'+currentTicker);
+  if(!c || !c.ticker){
+    $('#convBody').innerHTML = '<p class="text-xs text-muted">Belum ada percakapan agen untuk '+currentTicker+'. Tunggu siklus agen berikutnya.</p>';
+    lastConvText = '';
+    return;
+  }
+  lastConvText = `[${c.ticker}] ${c.ts}\nRINGKASAN: ${c.summary}\n\n=== ANALYST ===\n${c.analyst}\n\n=== TRADER ===\n${c.trader}`;
+  $('#convBody').innerHTML = `
+    <div class="text-[11px] font-mono text-muted">${wibDateTime(c.ts)} WIB · <span class="text-accent">${c.summary}</span></div>
+    <div class="rounded-lg bg-elevated/40 border border-line p-3">
+      <div class="flex items-center gap-1.5 mb-1"><span class="w-2 h-2 rounded-full bg-analyst"></span><span class="text-[11px] font-semibold text-analyst">ANALYST</span></div>
+      <p class="text-[12px] leading-relaxed whitespace-pre-wrap text-txt/90">${escapeHtml(c.analyst)}</p>
+    </div>
+    <div class="rounded-lg bg-elevated/40 border border-line p-3">
+      <div class="flex items-center gap-1.5 mb-1"><span class="w-2 h-2 rounded-full bg-trader"></span><span class="text-[11px] font-semibold text-trader">TRADER</span></div>
+      <p class="text-[12px] leading-relaxed whitespace-pre-wrap text-txt/90">${escapeHtml(c.trader)}</p>
+    </div>`;
+}
+
+// ---------- agent logs ----------
+const agentColor = a => a==='analyst'?'text-analyst':a==='trader'?'text-trader':'text-muted';
+const lvlColor = l => l==='error'?'text-down':l==='warn'?'text-amber':l==='debug'?'text-muted':'text-txt';
+async function loadLogs(){
+  const logs = await getJSON('/api/logs');
+  $('#logsFeed').innerHTML = logs.map(l=>`
+    <div class="px-3 py-1.5 fade-row flex gap-2">
+      <span class="font-mono text-[10px] text-muted shrink-0">${wibTime(l.ts)}</span>
+      <span class="font-mono text-[10px] ${agentColor(l.agent)} shrink-0 w-12">${l.agent}</span>
+      <span class="text-[11px] ${lvlColor(l.level)} leading-snug">${l.ticker?`<b>${l.ticker}</b> `:''}${escapeHtml(l.message)}</span>
+    </div>`).join('');
+}
+
+// ---------- news ----------
+const sentColor = s => s==='positive'?'text-up':s==='negative'?'text-down':'text-muted';
+async function loadNews(){
+  const items = await getJSON('/api/news?scope='+newsScope);
+  $('#newsFeed').innerHTML = items.map(n=>`
+    <a href="${n.url}" target="_blank" rel="noopener" class="block px-3 py-2 hover:bg-elevated/40 transition-colors duration-150">
+      <div class="flex items-start gap-2">
+        <span class="mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${n.sentiment==='positive'?'bg-up':n.sentiment==='negative'?'bg-down':'bg-muted'}"></span>
+        <div class="min-w-0">
+          <p class="text-[12px] leading-snug">${escapeHtml(n.title)}</p>
+          <p class="text-[10px] text-muted font-mono mt-0.5">
+            ${wibTime(n.ts)} · ${n.source||''} · <span class="${sentColor(n.sentiment)}">${n.sentiment}</span>
+            ${n.impact?` · <span class="${n.impact>0?'text-up':'text-down'}">impact ${n.impact>0?'+':''}${n.impact}</span>`:''}
+            ${n.tickers?` · <span class="text-accent">${n.tickers}</span>`:''}
+            ${n.scope==='global'?` · <span class="text-amber">global</span>`:''}
+          </p>
+        </div>
+      </div>
+    </a>`).join('') || '<p class="px-3 py-4 text-xs text-muted">belum ada berita.</p>';
+}
+
+function escapeHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// ---------- kesehatan sistem (kesegaran data + provider) ----------
+async function loadHealth(){
+  let d; try{ d = await getJSON('/api/health'); }catch(e){ return; }
+  $('#healthStrip').innerHTML = (d.freshness||[]).map(f=>{
+    const col = f.stale ? 'bg-down' : 'bg-up';
+    const age = f.age_h==null ? '—' : (f.age_h<1 ? Math.round(f.age_h*60)+'m' : f.age_h+'j');
+    return `<span class="flex items-center gap-1" title="${f.source}: umur ${age}, ambang ${f.threshold_h}j${f.stale?' — BASI!':''}">
+      <span class="w-1.5 h-1.5 rounded-full ${col}"></span>${f.source} <span class="${f.stale?'text-down':'text-muted'}">${age}</span></span>`;
+  }).join('');
+  const cds = d.cooldowns||{};
+  const keys = Object.keys(cds);
+  $('#cooldownStrip').innerHTML = keys.length
+    ? `<span class="text-amber">⏳ provider cooldown: ${keys.map(k=>`${k} ${Math.round(cds[k])}s`).join(', ')}</span>`
+    : `<span class="text-up">✓ semua provider hidup</span>`;
+}
+
+// ---------- banner selamat datang (sekali, bisa ditutup permanen) ----------
+if(!localStorage.getItem('onboard-v1')){
+  document.getElementById('onboardBanner').classList.remove('hidden');
+}
+document.getElementById('btnOnboardClose').addEventListener('click', ()=>{
+  localStorage.setItem('onboard-v1','1');
+  document.getElementById('onboardBanner').classList.add('hidden');
+});
+
+// ---------- jam WIB live ----------
+function tickWIB(){
+  $('#wibClock').textContent = new Date().toLocaleTimeString('id-ID',
+    {..._WIB, hour:'2-digit', minute:'2-digit', second:'2-digit'}) + ' WIB';
+}
+tickWIB(); setInterval(tickWIB, 1000);
+
+// ---------- events ----------
+$('#chartTicker').addEventListener('change', e=>{ currentTicker=e.target.value; loadChart(); });
+$('#btnRunCycle').addEventListener('click', async ()=>{
+  $('#btnRunCycle').disabled=true; $('#btnRunCycle').textContent='⏳ jalan…';
+  await postJSON('/api/run-cycle');
+  setTimeout(()=>{ $('#btnRunCycle').disabled=false; $('#btnRunCycle').textContent='▶ Run cycle'; refreshAll(); }, 1500);
+});
+$('#btnReport').addEventListener('click', ()=> window.open('/api/report','_blank'));
+// Horizon prediksi pilihan user (tombol auto/1/3/5) — auto = agen pilih sendiri.
+let selectedHorizon = '';
+document.querySelectorAll('.hz-btn').forEach(b=> b.addEventListener('click', e=>{
+  selectedHorizon = e.target.dataset.h;
+  document.querySelectorAll('.hz-btn').forEach((x,i)=>{
+    x.className = 'hz-btn px-2 py-1.5 cursor-pointer' + (i>0?' border-l border-edge':'') +
+      (x.dataset.h===selectedHorizon ? ' bg-accent/20 text-accent' : ' bg-elevated text-muted hover:text-txt');
+  });
+}));
+// Fokus analisis 1 saham: prioritaskan saham ini SEKARANG (sebelum saham lain)
+async function analyzeOne(){
+  const t = $('#searchTicker').value.trim().toUpperCase();
+  if(!t) return;
+  const b=$('#btnAnalyze'), o=b.textContent; b.disabled=true; b.textContent='⏳ '+t+'…';
+  await postJSON('/api/run/'+t+(selectedHorizon?'?horizon='+selectedHorizon:''));  // agen debat, horizon sesuai tombol
+  currentTicker=t; loadChart();           // fokuskan chart + percakapan ke saham ini
+  let tries=0;
+  const iv=setInterval(async()=>{         // tunggu debat selesai (~10-30dtk) lalu refresh
+    const c=await getJSON('/api/conversation/'+t);
+    const fresh = c && c.ticker && (Date.now()-new Date(c.ts).getTime() < 180000);
+    if(fresh || ++tries>=12){ clearInterval(iv); currentTicker=t; loadChart(); loadWatchlist();
+      b.disabled=false; b.textContent=o; }
+  }, 4000);
+}
+$('#btnAnalyze').addEventListener('click', analyzeOne);
+$('#searchTicker').addEventListener('keydown', e=>{ if(e.key==='Enter') analyzeOne(); });
+$('#btnCopyConv').addEventListener('click', async ()=>{
+  if(!lastConvText){ return; }
+  try{ await navigator.clipboard.writeText(lastConvText);
+    const b=$('#btnCopyConv'); const t=b.textContent; b.textContent='✓ tercopy';
+    setTimeout(()=>b.textContent=t,1500);
+  }catch(e){ console.error(e); }
+});
+document.querySelectorAll('.news-tab').forEach(b=> b.addEventListener('click', e=>{
+  newsScope = e.target.dataset.scope;
+  document.querySelectorAll('.news-tab').forEach(x=>{ x.className='news-tab px-2 py-0.5 rounded hover:bg-elevated cursor-pointer text-muted'; });
+  e.target.className='news-tab px-2 py-0.5 rounded bg-accent/20 text-accent cursor-pointer';
+  loadNews();
+}));
+
+// ---------- refresh loop ----------
+async function refreshAll(){
+  try{ await Promise.all([loadOverview(), loadWatchlist(), loadLogs(), loadNews(),
+    loadEvents(), loadIpos(), loadHealth(), loadFocus()]); }catch(e){ console.error(e); }
+}
+refreshAll();
+loadChart();
+setInterval(()=>{ loadOverview(); loadWatchlist(); loadLogs(); loadHealth(); loadFocus(); }, 12000);
+setInterval(loadNews, 30000);
+setInterval(loadChart, 30000);
+setInterval(()=>{ loadEvents(); loadIpos(); }, 60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+# Secrets
+.env
+.ssh/
+*.key
+*.pub
+
+# Runtime data — anchor ke root (JANGAN pakai `data/` polos: itu juga meng-ignore
+# folder source app/data/ di mana pun namanya cocok).
+/data/
+*.db
+*.sqlite3
+/logs/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# Node / frontend deps & build cache (jangan commit — 380MB)
+node_modules/
+frontend/node_modules/
+frontend/.next/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Salinan cadangan manual — jangan pernah masuk repo
+*.bak-*
+*.orig

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portofolio — Saham IDX Prediction</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { darkMode:'class', theme:{ extend:{
+    colors:{ bg:'#0E1213', panel:'#161B1D', elevated:'#20272A', line:'#242C2F',
+      edge:'#3B4649', txt:'#EAE7DE', muted:'#97A6A4', up:'#45C08E', down:'#E4685A',
+      accent:'#D9A441', analyst:'#B48EDE', trader:'#5BB8A8', amber:'#E3B34C' },
+    fontFamily:{ sans:['IBM Plex Sans','sans-serif'], mono:['IBM Plex Mono','monospace'] },
+  }}};
+</script>
+<style>
+  body { background:#0E1213; }
+  ::-webkit-scrollbar { width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb { background:#3B4649; border-radius:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  .panel { background:#161B1D; border:1px solid #242C2F; }
+  .nav-link { padding:4px 10px; border-radius:6px; color:#97A6A4; }
+  .nav-link:hover { color:#EAE7DE; background:#20272A; }
+  .nav-link.active { color:#D9A441; background:rgba(217,164,65,.12); }
+</style>
+</head>
+<body class="font-sans text-txt min-h-screen antialiased">
+
+<header class="sticky top-0 z-30 backdrop-blur bg-bg/85 border-b border-line">
+  <div class="max-w-[1400px] mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
+    <a href="/" class="flex items-center gap-2.5">
+      <svg class="w-7 h-7 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 17l6-6 4 4 8-8M21 7v5M21 7h-5"/>
+      </svg>
+      <h1 class="font-semibold tracking-tight">Saham IDX <span class="text-accent">Prediction</span></h1>
+    </a>
+    <nav class="flex items-center gap-1 text-xs font-medium ml-2">
+      <a href="/" class="nav-link">Dashboard</a>
+      <a href="/p/prediksi" class="nav-link">Prediksi</a>
+      <a href="/p/portofolio" class="nav-link active">Portofolio</a>
+      <a href="/p/sistem" class="nav-link">Sistem</a>
+      <a href="/p/panduan" class="nav-link">Panduan</a>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-[1400px] mx-auto px-4 py-4 space-y-4">
+
+  <!-- KPI -->
+  <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="panel rounded-xl p-4">
+      <p class="text-xs text-muted">Total portofolio</p>
+      <p id="kTotal" class="text-2xl font-semibold font-mono mt-1">—</p>
+      <p id="kStart" class="text-[11px] text-muted font-mono mt-0.5">—</p>
+    </div>
+    <div class="panel rounded-xl p-4">
+      <p class="text-xs text-muted">Profit / Loss</p>
+      <p id="kPnl" class="text-2xl font-semibold font-mono mt-1">—</p>
+      <p id="kPnlPct" class="text-[11px] font-mono mt-0.5">—</p>
+    </div>
+    <div class="panel rounded-xl p-4">
+      <p class="text-xs text-muted">Kas tersedia</p>
+      <p id="kCash" class="text-2xl font-semibold font-mono mt-1">—</p>
+      <p id="kEquity" class="text-[11px] text-muted font-mono mt-0.5">—</p>
+    </div>
+    <div class="panel rounded-xl p-4">
+      <p class="text-xs text-muted">Posisi terbuka</p>
+      <p id="kPos" class="text-2xl font-semibold font-mono mt-1">—</p>
+      <p class="text-[11px] text-muted font-mono mt-0.5">maks 8 posisi · 15%/posisi</p>
+    </div>
+  </section>
+
+  <!-- kurva ekuitas -->
+  <section class="panel rounded-xl p-4">
+    <h2 class="font-semibold mb-2">Kurva Ekuitas</h2>
+    <div class="h-[260px]"><canvas id="equityChart"></canvas></div>
+  </section>
+
+  <section class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+    <!-- posisi -->
+    <div class="panel rounded-xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-line"><h2 class="font-semibold">Posisi Terbuka</h2></div>
+      <div class="overflow-auto max-h-[420px]">
+        <table class="w-full text-xs font-mono">
+          <thead class="text-muted text-[11px] border-b border-line bg-elevated/40 sticky top-0 bg-panel z-10"><tr>
+            <th class="text-left px-4 py-2 font-medium">Saham</th>
+            <th class="text-right px-2 py-2 font-medium">Lot</th>
+            <th class="text-right px-2 py-2 font-medium">Avg beli</th>
+            <th class="text-right px-2 py-2 font-medium">Harga kini</th>
+            <th class="text-right px-2 py-2 font-medium">Nilai</th>
+            <th class="text-right px-4 py-2 font-medium">P/L</th>
+          </tr></thead>
+          <tbody id="posBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ledger -->
+    <div class="panel rounded-xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-line"><h2 class="font-semibold">Ledger Harian <span class="text-[11px] text-muted font-normal">(30 hari)</span></h2></div>
+      <div class="overflow-auto max-h-[420px]">
+        <table class="w-full text-xs font-mono">
+          <thead class="text-muted text-[11px] border-b border-line bg-elevated/40 sticky top-0 bg-panel z-10"><tr>
+            <th class="text-left px-4 py-2 font-medium">Tanggal</th>
+            <th class="text-right px-2 py-2 font-medium">Ekuitas</th>
+            <th class="text-right px-2 py-2 font-medium">PnL hari</th>
+            <th class="text-right px-2 py-2 font-medium">Trade</th>
+            <th class="text-right px-2 py-2 font-medium">Prediksi</th>
+            <th class="text-right px-4 py-2 font-medium">Win-rate</th>
+          </tr></thead>
+          <tbody id="ledgerBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- riwayat transaksi -->
+  <section class="panel rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-line"><h2 class="font-semibold">Riwayat Transaksi</h2></div>
+    <div class="overflow-auto max-h-[440px]">
+      <table class="w-full text-xs font-mono">
+        <thead class="text-muted text-[11px] border-b border-line bg-elevated/40 sticky top-0 bg-panel z-10"><tr>
+          <th class="text-left px-4 py-2 font-medium">Waktu (WIB)</th>
+          <th class="text-center px-2 py-2 font-medium">Aksi</th>
+          <th class="text-left px-2 py-2 font-medium">Saham</th>
+          <th class="text-right px-2 py-2 font-medium">Lot</th>
+          <th class="text-right px-2 py-2 font-medium">Harga</th>
+          <th class="text-right px-2 py-2 font-medium">Nilai</th>
+          <th class="text-left px-4 py-2 font-medium">Alasan</th>
+        </tr></thead>
+        <tbody id="tradesBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="text-center text-[11px] text-muted font-mono py-6">
+    Bukan nasihat keuangan. Paper money only — tidak ada uang riil yang diperdagangkan.
+  </footer>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmtRp = n => 'Rp' + Math.round(n||0).toLocaleString('id-ID');
+const fmtNum = n => (n==null?'—':Number(n).toLocaleString('id-ID',{maximumFractionDigits:2}));
+const sign = n => (n>0?'+':'') + Number(n||0).toFixed(2);
+const upDown = n => n>0 ? 'text-up' : n<0 ? 'text-down' : 'text-muted';
+const _WIB = {timeZone:'Asia/Jakarta', hour12:false};
+const wibDateTime = ts => { const d=ts?new Date(ts):null; return (!d||isNaN(d))?(ts||'').slice(0,16).replace('T',' ')
+  : d.toLocaleString('id-ID',{..._WIB,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
+async function getJSON(u){ const r = await fetch(u); return r.json(); }
+function escapeHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+let equityChart = null;
+
+async function loadAll(){
+  const ov = await getJSON('/api/overview');
+  const pf = ov.portfolio;
+  $('#kTotal').textContent = fmtRp(pf.total);
+  $('#kStart').textContent = 'modal awal ' + fmtRp(ov.start_cash);
+  $('#kPnl').textContent = fmtRp(pf.pnl);
+  $('#kPnl').className = 'text-2xl font-semibold font-mono mt-1 ' + upDown(pf.pnl);
+  $('#kPnlPct').textContent = sign(pf.pnl_pct) + '%';
+  $('#kPnlPct').className = 'text-[11px] font-mono mt-0.5 ' + upDown(pf.pnl);
+  $('#kCash').textContent = fmtRp(pf.cash);
+  $('#kEquity').textContent = 'nilai posisi ' + fmtRp(pf.equity);
+
+  // kurva ekuitas penuh
+  const curve = ov.curve||[];
+  if(equityChart) equityChart.destroy();
+  equityChart = new Chart($('#equityChart'), { type:'line',
+    data:{ labels:curve.map(c=>wibDateTime(c.ts)), datasets:[{
+      data:curve.map(c=>c.total), borderColor:'#D9A441', borderWidth:2, pointRadius:0,
+      fill:true, backgroundColor:'rgba(217,164,65,0.06)', tension:0.25 }]},
+    options:{ responsive:true, maintainAspectRatio:false, animation:false,
+      plugins:{ legend:{display:false},
+        tooltip:{ backgroundColor:'#161B1D', borderColor:'#3B4649', borderWidth:1,
+          callbacks:{ label:c=>fmtRp(c.raw) }}},
+      scales:{ x:{ grid:{color:'#242C2F'}, ticks:{color:'#97A6A4', maxTicksLimit:10, font:{family:'IBM Plex Mono',size:10}}},
+               y:{ grid:{color:'#242C2F'}, ticks:{color:'#97A6A4', font:{family:'IBM Plex Mono',size:10},
+                   callback:v=>(v/1e6).toFixed(0)+' jt' }}}}});
+
+  const pos = await getJSON('/api/positions');
+  $('#kPos').textContent = pos.length;
+  $('#posBody').innerHTML = pos.map(p=>`
+    <tr class="border-b border-line/40 hover:bg-elevated/30">
+      <td class="px-4 py-2"><a href="/p/saham?t=${p.ticker}" class="font-semibold hover:text-accent">${p.ticker}</a></td>
+      <td class="px-2 py-2 text-right">${(p.qty/100).toFixed(0)}</td>
+      <td class="px-2 py-2 text-right">${fmtNum(p.avg_price)}</td>
+      <td class="px-2 py-2 text-right">${fmtNum(p.price)}</td>
+      <td class="px-2 py-2 text-right">${fmtRp(p.value)}</td>
+      <td class="px-4 py-2 text-right ${upDown(p.pl_pct)}">${sign(p.pl_pct)}%</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="px-4 py-6 text-muted text-center">tidak ada posisi terbuka</td></tr>';
+
+  const led = await getJSON('/api/ledger?days=30');
+  $('#ledgerBody').innerHTML = (led||[]).slice().reverse().map(l=>`
+    <tr class="border-b border-line/40">
+      <td class="px-4 py-1.5 text-muted">${l.date}</td>
+      <td class="px-2 py-1.5 text-right">${fmtRp(l.equity)}</td>
+      <td class="px-2 py-1.5 text-right ${upDown(l.pnl_day)}">${fmtRp(l.pnl_day)}</td>
+      <td class="px-2 py-1.5 text-right text-muted">${l.trades}</td>
+      <td class="px-2 py-1.5 text-right text-muted">${l.predictions}</td>
+      <td class="px-4 py-1.5 text-right">${l.win_rate!=null?l.win_rate+'%':'—'}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="px-4 py-6 text-muted text-center">belum ada data</td></tr>';
+
+  const tr = await getJSON('/api/trades');
+  $('#tradesBody').innerHTML = (tr||[]).map(t=>`
+    <tr class="border-b border-line/40 hover:bg-elevated/30">
+      <td class="px-4 py-1.5 text-muted">${wibDateTime(t.ts)}</td>
+      <td class="px-2 py-1.5 text-center"><span class="${t.side==='BUY'?'text-up':'text-down'} font-semibold">${t.side}</span></td>
+      <td class="px-2 py-1.5"><a href="/p/saham?t=${t.ticker}" class="font-semibold hover:text-accent">${t.ticker}</a></td>
+      <td class="px-2 py-1.5 text-right">${(t.qty/100).toFixed(0)}</td>
+      <td class="px-2 py-1.5 text-right">${fmtNum(t.price)}</td>
+      <td class="px-2 py-1.5 text-right">${fmtRp(t.qty*t.price)}</td>
+      <td class="px-4 py-1.5 text-txt/70 max-w-[420px] truncate" title="${escapeHtml(t.reason||'')}">${escapeHtml(t.reason||'—')}</td>
+    </tr>`).join('') || '<tr><td colspan="7" class="px-4 py-6 text-muted text-center">belum ada transaksi</td></tr>';
+}
+loadAll();
+setInterval(loadAll, 20000);
+</script>
+</body>
+</html>

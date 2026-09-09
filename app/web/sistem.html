@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistem — Saham IDX Prediction</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { darkMode:'class', theme:{ extend:{
+    colors:{ bg:'#0E1213', panel:'#161B1D', elevated:'#20272A', line:'#242C2F',
+      edge:'#3B4649', txt:'#EAE7DE', muted:'#97A6A4', up:'#45C08E', down:'#E4685A',
+      accent:'#D9A441', analyst:'#B48EDE', trader:'#5BB8A8', amber:'#E3B34C' },
+    fontFamily:{ sans:['IBM Plex Sans','sans-serif'], mono:['IBM Plex Mono','monospace'] },
+  }}};
+</script>
+<style>
+  body { background:#0E1213; }
+  ::-webkit-scrollbar { width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb { background:#3B4649; border-radius:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  .panel { background:#161B1D; border:1px solid #242C2F; }
+  .nav-link { padding:4px 10px; border-radius:6px; color:#97A6A4; }
+  .nav-link:hover { color:#EAE7DE; background:#20272A; }
+  .nav-link.active { color:#D9A441; background:rgba(217,164,65,.12); }
+</style>
+</head>
+<body class="font-sans text-txt min-h-screen antialiased">
+
+<header class="sticky top-0 z-30 backdrop-blur bg-bg/85 border-b border-line">
+  <div class="max-w-[1400px] mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
+    <a href="/" class="flex items-center gap-2.5">
+      <svg class="w-7 h-7 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 17l6-6 4 4 8-8M21 7v5M21 7h-5"/>
+      </svg>
+      <h1 class="font-semibold tracking-tight">Saham IDX <span class="text-accent">Prediction</span></h1>
+    </a>
+    <nav class="flex items-center gap-1 text-xs font-medium ml-2">
+      <a href="/" class="nav-link">Dashboard</a>
+      <a href="/p/prediksi" class="nav-link">Prediksi</a>
+      <a href="/p/portofolio" class="nav-link">Portofolio</a>
+      <a href="/p/sistem" class="nav-link active">Sistem</a>
+      <a href="/p/panduan" class="nav-link">Panduan</a>
+    </nav>
+    <button id="btnReport" class="ml-auto px-3 py-1.5 rounded-md bg-elevated border border-edge hover:border-accent/50 cursor-pointer text-xs">Laporan harian</button>
+  </div>
+</header>
+
+<main class="max-w-[1400px] mx-auto px-4 py-4 space-y-4">
+
+  <!-- kesehatan -->
+  <section class="grid lg:grid-cols-2 gap-4">
+    <div class="panel rounded-xl p-4">
+      <h2 class="font-semibold mb-2">Kesegaran Sumber Data</h2>
+      <div id="freshBody" class="text-xs font-mono space-y-1.5 text-muted">memuat…</div>
+    </div>
+    <div class="panel rounded-xl p-4">
+      <h2 class="font-semibold mb-2">Provider LLM</h2>
+      <div id="cdBody" class="text-xs font-mono space-y-1.5 text-muted">memuat…</div>
+      <h2 class="font-semibold mt-4 mb-2">Efisiensi Token <span class="text-[11px] text-muted font-normal">(memoization tesis)</span></h2>
+      <div id="memoBody" class="text-xs font-mono text-muted">memuat…</div>
+    </div>
+  </section>
+
+  <!-- token usage -->
+  <section class="panel rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-line flex items-center justify-between flex-wrap gap-2">
+      <div class="flex items-center gap-2">
+        <h2 class="font-semibold">Token & Output LLM</h2>
+        <span id="usageSummary" class="text-[11px] font-mono text-muted"></span>
+      </div>
+      <div id="usageByModel" class="text-[10px] font-mono text-muted flex gap-3 flex-wrap"></div>
+    </div>
+    <div class="overflow-auto max-h-[380px]">
+      <table class="w-full text-xs font-mono">
+        <thead class="text-muted text-[11px] border-b border-line bg-elevated/40 sticky top-0 bg-panel z-10"><tr>
+          <th class="text-left px-4 py-2 font-medium">Waktu (WIB)</th>
+          <th class="text-left px-2 py-2 font-medium">Provider / Model</th>
+          <th class="text-right px-2 py-2 font-medium">Prompt</th>
+          <th class="text-right px-2 py-2 font-medium">Output</th>
+          <th class="text-right px-2 py-2 font-medium">Total</th>
+          <th class="text-left px-4 py-2 font-medium">Cuplikan output</th>
+        </tr></thead>
+        <tbody id="usageBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+    <!-- log -->
+    <div class="panel rounded-xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-line flex items-center justify-between">
+        <h2 class="font-semibold">Log Aktivitas Agen</h2>
+        <div class="flex gap-2 text-[10px] font-mono">
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-analyst"></span>Analyst</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-trader"></span>Trader</span>
+        </div>
+      </div>
+      <div id="logsFeed" class="max-h-[520px] overflow-y-auto divide-y divide-line/60 text-xs"></div>
+    </div>
+
+    <!-- lessons -->
+    <div class="panel rounded-xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-line">
+        <h2 class="font-semibold">Pelajaran Agen <span class="text-[11px] text-muted font-normal">(loop belajar — diinject ke prompt berikutnya)</span></h2>
+      </div>
+      <div id="lessonsBody" class="max-h-[520px] overflow-y-auto divide-y divide-line/60 text-xs"></div>
+    </div>
+  </section>
+
+  <footer class="text-center text-[11px] text-muted font-mono py-6">
+    Bukan nasihat keuangan. Paper money only.
+  </footer>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmtTok = n => (n==null?'—':Number(n).toLocaleString('id-ID'));
+const _WIB = {timeZone:'Asia/Jakarta', hour12:false};
+const wibTime = ts => { const d=ts?new Date(ts):null; return (!d||isNaN(d))?(ts||'').slice(11,19)
+  : d.toLocaleTimeString('id-ID',{..._WIB,hour:'2-digit',minute:'2-digit',second:'2-digit'}); };
+const wibDateTime = ts => { const d=ts?new Date(ts):null; return (!d||isNaN(d))?(ts||'').slice(0,16).replace('T',' ')
+  : d.toLocaleString('id-ID',{..._WIB,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
+async function getJSON(u){ const r = await fetch(u); return r.json(); }
+function escapeHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function loadHealth(){
+  const d = await getJSON('/api/health');
+  $('#freshBody').innerHTML = (d.freshness||[]).map(f=>{
+    const age = f.age_h==null ? '—' : (f.age_h<1 ? Math.round(f.age_h*60)+' mnt' : f.age_h+' jam');
+    return `<div class="flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full ${f.stale?'bg-down':'bg-up'}"></span>
+      <span class="w-32 text-txt">${escapeHtml(f.source)}</span>
+      <span class="${f.stale?'text-down':'text-muted'}">umur ${age}</span>
+      <span class="text-muted">· ambang ${f.threshold_h} jam</span>
+      ${f.stale?'<span class="text-down font-semibold">BASI</span>':''}
+    </div>`;
+  }).join('');
+  const cds = d.cooldowns||{};
+  const keys = Object.keys(cds);
+  $('#cdBody').innerHTML = keys.length
+    ? keys.map(k=>`<div><span class="text-amber">⏳ ${k}</span> cooldown ${Math.round(cds[k])}s (rate-limit / timeout)</div>`).join('')
+    : '<div class="text-up">✓ semua provider hidup (tidak ada cooldown)</div>';
+  const m = d.memo||{};
+  $('#memoBody').innerHTML = m.reused!=null
+    ? `tesis dipakai ulang <span class="text-accent">${m.reused}</span> / ${m.reused+m.fresh} (${m.reuse_rate}%) — tiap reuse hemat ~6rb token`
+    : 'belum ada data memoization.';
+}
+
+async function loadUsage(){
+  const d = await getJSON('/api/usage');
+  const s = d.summary || {};
+  $('#usageSummary').textContent = `24 jam: ${fmtTok(s.total_tokens)} token · ${fmtTok(s.calls)} panggilan`;
+  $('#usageByModel').innerHTML = (s.by_model||[]).slice(0,8).map(m=>
+    `<span>${escapeHtml(m.model)}: <span class="text-accent">${fmtTok(m.tokens)}</span> (${m.calls}×)</span>`).join('');
+  $('#usageBody').innerHTML = (d.recent||[]).map(u=>`
+    <tr class="border-b border-line/40 hover:bg-elevated/30">
+      <td class="px-4 py-1.5 text-muted text-[11px]">${wibTime(u.ts)}</td>
+      <td class="px-2 py-1.5 text-[11px]"><span class="text-accent">${escapeHtml(u.provider||'?')}</span>/${escapeHtml(u.model||'?')}</td>
+      <td class="px-2 py-1.5 text-right text-muted">${fmtTok(u.prompt_tokens)}</td>
+      <td class="px-2 py-1.5 text-right text-muted">${fmtTok(u.completion_tokens)}</td>
+      <td class="px-2 py-1.5 text-right font-semibold">${fmtTok(u.total_tokens)}</td>
+      <td class="px-4 py-1.5 text-[11px] text-txt/70 max-w-[380px] truncate" title="${escapeHtml(u.output)}">${escapeHtml((u.output||'').replace(/\s+/g,' '))}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="px-4 py-4 text-muted text-center">belum ada panggilan LLM tercatat</td></tr>';
+}
+
+const agentColor = a => a==='analyst'?'text-analyst':a==='trader'?'text-trader':'text-muted';
+const lvlColor = l => l==='error'?'text-down':l==='warn'?'text-amber':l==='debug'?'text-muted':'text-txt';
+async function loadLogs(){
+  const logs = await getJSON('/api/logs');
+  $('#logsFeed').innerHTML = logs.map(l=>`
+    <div class="px-3 py-1.5 flex gap-2">
+      <span class="font-mono text-[10px] text-muted shrink-0">${wibTime(l.ts)}</span>
+      <span class="font-mono text-[10px] ${agentColor(l.agent)} shrink-0 w-12">${l.agent}</span>
+      <span class="text-[11px] ${lvlColor(l.level)} leading-snug">${l.ticker?`<b>${l.ticker}</b> `:''}${escapeHtml(l.message)}</span>
+    </div>`).join('');
+}
+
+const kindBadge = k => k==='win' ? '<span class="text-up">✓ win</span>'
+  : k==='loss' ? '<span class="text-down">✗ loss</span>'
+  : k==='loss-highconf' ? '<span class="text-down font-semibold">✗✗ high-conf miss</span>'
+  : k==='auto-rule' ? '<span class="text-accent">⚙ aturan dinamis</span>'
+  : `<span class="text-muted">${k||''}</span>`;
+async function loadLessons(){
+  const rows = await getJSON('/api/lessons');
+  $('#lessonsBody').innerHTML = (rows||[]).map(l=>`
+    <div class="px-3 py-2">
+      <div class="text-[10px] font-mono text-muted">${wibDateTime(l.ts)} · ${kindBadge(l.kind)} ${l.ticker?`· <a href="/p/saham?t=${l.ticker}" class="text-accent hover:underline">${l.ticker}</a>`:''}</div>
+      <p class="text-[12px] leading-snug mt-0.5 text-txt/90">${escapeHtml(l.lesson)}</p>
+    </div>`).join('') || '<p class="px-3 py-4 text-muted">belum ada pelajaran tercatat.</p>';
+}
+
+$('#btnReport').addEventListener('click', ()=> window.open('/api/report','_blank'));
+function refresh(){ loadHealth(); loadUsage(); loadLogs(); loadLessons(); }
+refresh();
+setInterval(refresh, 15000);
+</script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panduan — Saham IDX Prediction</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { darkMode:'class', theme:{ extend:{
+    colors:{ bg:'#0E1213', panel:'#161B1D', elevated:'#20272A', line:'#242C2F',
+      edge:'#3B4649', txt:'#EAE7DE', muted:'#97A6A4', up:'#45C08E', down:'#E4685A',
+      accent:'#D9A441', analyst:'#B48EDE', trader:'#5BB8A8', amber:'#E3B34C' },
+    fontFamily:{ sans:['IBM Plex Sans','sans-serif'], mono:['IBM Plex Mono','monospace'] },
+  }}};
+</script>
+<style>
+  body { background:#0E1213; }
+  ::-webkit-scrollbar { width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb { background:#3B4649; border-radius:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  .panel { background:#161B1D; border:1px solid #242C2F; }
+  .nav-link { padding:4px 10px; border-radius:6px; color:#97A6A4; }
+  .nav-link:hover { color:#EAE7DE; background:#20272A; }
+  .nav-link.active { color:#D9A441; background:rgba(217,164,65,.12); }
+  .prose-id p { margin-bottom:.6rem; line-height:1.65; }
+  h2 { text-wrap: balance; }
+</style>
+</head>
+<body class="font-sans text-txt min-h-screen antialiased">
+
+<header class="sticky top-0 z-30 backdrop-blur bg-bg/85 border-b border-line">
+  <div class="max-w-[1400px] mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
+    <a href="/" class="flex items-center gap-2.5">
+      <svg class="w-7 h-7 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 17l6-6 4 4 8-8M21 7v5M21 7h-5"/>
+      </svg>
+      <h1 class="font-semibold tracking-tight">Saham IDX <span class="text-accent">Prediction</span></h1>
+    </a>
+    <nav class="flex items-center gap-1 text-xs font-medium ml-2">
+      <a href="/" class="nav-link">Dashboard</a>
+      <a href="/p/prediksi" class="nav-link">Prediksi</a>
+      <a href="/p/portofolio" class="nav-link">Portofolio</a>
+      <a href="/p/sistem" class="nav-link">Sistem</a>
+      <a href="/p/panduan" class="nav-link active">Panduan</a>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-[820px] mx-auto px-4 py-8 space-y-8">
+
+  <section>
+    <h2 class="text-2xl font-semibold">Apa aplikasi ini?</h2>
+    <div class="prose-id text-sm text-txt/90 mt-3">
+      <p>Mesin AI yang <b>menganalisis semua saham Bursa Efek Indonesia secara otomatis, 24 jam</b>.
+      Dua agen AI (Analis dan Trader) berdebat tentang tiap saham, lalu menghasilkan prediksi:
+      arah harga (naik / turun / datar), seberapa yakin, dan dalam berapa hari.</p>
+      <p>Untuk membuktikan dirinya, mesin ini juga <b>berdagang dengan uang palsu</b> (paper
+      trading, modal awal Rp100 juta). Semua untung-rugi yang kamu lihat bukan uang sungguhan.</p>
+      <p class="text-muted">Bukan nasihat keuangan. Prediksi bersifat probabilistik — sistem ini
+      alat bantu dan eksperimen, bukan jaminan profit.</p>
+    </div>
+  </section>
+
+  <section class="panel rounded-xl p-5">
+    <h2 class="text-lg font-semibold">Mulai dari mana? Kamu tidak perlu melakukan apa pun.</h2>
+    <p class="text-sm text-muted mt-1 mb-4">Engine sudah bekerja sendiri. Alur harian yang disarankan:</p>
+    <ol class="space-y-4 text-sm">
+      <li class="flex gap-3">
+        <span class="shrink-0 w-7 h-7 rounded-full bg-accent/15 text-accent font-mono font-semibold flex items-center justify-center">1</span>
+        <div><b>Pagi (sebelum 09:00 WIB)</b> — buka <a href="/" class="text-accent hover:underline">Dashboard</a>.
+          Bagian paling atas, <i>Sinyal Hari Ini</i>, menampilkan saham yang diprediksi naik/turun
+          beserta alasannya dalam kalimat biasa. Itu inti aplikasi ini.</div>
+      </li>
+      <li class="flex gap-3">
+        <span class="shrink-0 w-7 h-7 rounded-full bg-accent/15 text-accent font-mono font-semibold flex items-center justify-center">2</span>
+        <div><b>Penasaran satu saham?</b> — klik sahamnya. Halaman detail menunjukkan grafik harga,
+          fundamental perusahaan, riwayat prediksi (benar/salah), debat AI di balik keputusan, dan
+          berita emiten. Kamu juga bisa minta analisis baru dengan tombol <i>Analisis</i>.</div>
+      </li>
+      <li class="flex gap-3">
+        <span class="shrink-0 w-7 h-7 rounded-full bg-accent/15 text-accent font-mono font-semibold flex items-center justify-center">3</span>
+        <div><b>Sore (setelah 16:00 WIB)</b> — cek <a href="/p/portofolio" class="text-accent hover:underline">Portofolio</a>
+          untuk melihat hasil trading uang palsu hari itu, dan <a href="/p/prediksi" class="text-accent hover:underline">Prediksi</a>
+          untuk melihat berapa banyak prediksi yang benar.</div>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2 class="text-lg font-semibold">Cara membaca sebuah prediksi</h2>
+    <div class="panel rounded-xl p-4 mt-3 font-mono text-sm">
+      <span class="px-1.5 rounded bg-up/15 text-up border border-up/40">▲ NAIK</span>
+      <span class="font-semibold ml-1">BBRI</span> +2,1% dalam 5 hari · keyakinan 62%
+    </div>
+    <ul class="text-sm space-y-2 mt-3 text-txt/90">
+      <li><b class="text-up">▲ NAIK / ▼ TURUN / ■ DATAR</b> — arah harga yang diprediksi.</li>
+      <li><b>+2,1%</b> — perkiraan besarnya pergerakan sampai target.</li>
+      <li><b>dalam 5 hari</b> — jendela waktu (hari bursa, Senin–Jumat). Disebut <i>horizon</i>.</li>
+      <li><b>keyakinan 62%</b> — dari pengalaman historis mesin, prediksi seperti ini benar sekitar
+        62 dari 100 kali. <span class="text-muted">55% = lemah (nyaris lempar koin), 60–65% = lumayan,
+        di atas 70% = jarang dan patut diperhatikan.</span></li>
+    </ul>
+    <p class="text-sm text-muted mt-3">Setiap prediksi dievaluasi otomatis saat jatuh tempo —
+      benar atau salah dicatat jujur di halaman <a href="/p/prediksi" class="text-accent hover:underline">Prediksi</a>,
+      dan mesin belajar dari kesalahannya.</p>
+  </section>
+
+  <section>
+    <h2 class="text-lg font-semibold">Halaman apa untuk apa?</h2>
+    <div class="mt-3 space-y-2 text-sm">
+      <div class="panel rounded-lg px-4 py-3"><b>Dashboard</b> <span class="text-muted">— ringkasan hari ini: sinyal teratas, saham fokus, kondisi pasar global, daftar pantauan.</span></div>
+      <div class="panel rounded-lg px-4 py-3"><b>Prediksi</b> <span class="text-muted">— semua prediksi + tingkat ketepatannya: mana yang benar, mana yang salah, faktor apa yang bekerja.</span></div>
+      <div class="panel rounded-lg px-4 py-3"><b>Portofolio</b> <span class="text-muted">— hasil trading uang palsu: posisi yang dipegang, riwayat beli/jual beserta alasan, untung-rugi per hari.</span></div>
+      <div class="panel rounded-lg px-4 py-3"><b>Sistem</b> <span class="text-muted">— dapur mesin: kesegaran data, pemakaian AI (token), log aktivitas, pelajaran yang dipetik. Untuk operator; pemula boleh abaikan.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="text-lg font-semibold">Saham Fokus &amp; gaya trading</h2>
+    <div class="prose-id text-sm text-txt/90 mt-3">
+      <p>Kamu bisa menyuruh mesin memberi perhatian ekstra ke beberapa saham pilihan, masing-masing
+      dengan gaya:</p>
+    </div>
+    <div class="mt-2 space-y-2 text-sm">
+      <div class="panel rounded-lg px-4 py-3"><span class="px-1.5 py-0.5 rounded border text-[11px] font-mono bg-down/15 text-down border-down/40">scalp</span> <span class="text-muted">— jual-beli cepat, jendela 1 hari. Mengejar momentum harian, keluar cepat.</span></div>
+      <div class="panel rounded-lg px-4 py-3"><span class="px-1.5 py-0.5 rounded border text-[11px] font-mono bg-trader/15 text-trader border-trader/40">swing</span> <span class="text-muted">— mengikuti tren beberapa hari, jendela 5 hari. Gaya tengah, default.</span></div>
+      <div class="panel rounded-lg px-4 py-3"><span class="px-1.5 py-0.5 rounded border text-[11px] font-mono bg-accent/15 text-accent border-accent/40">invest</span> <span class="text-muted">— menilai kelayakan investasi, jendela ±1 bulan. Menimbang fundamental perusahaan (laba, valuasi, dividen) di atas grafik.</span></div>
+    </div>
+    <p class="text-sm text-muted mt-3">Mengaturnya: buka file <code class="font-mono text-txt bg-elevated px-1 rounded">.env</code>
+      di folder aplikasi, isi <code class="font-mono text-txt bg-elevated px-1 rounded">FOCUS_TICKERS=BBCA:invest,BBRI:swing,ANTM:scalp</code>,
+      lalu restart engine. Saham fokus tampil di panel khusus di Dashboard.</p>
+  </section>
+
+  <section>
+    <h2 class="text-lg font-semibold">Kamus singkat</h2>
+    <dl class="mt-3 grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+      <div><dt class="font-semibold">Paper trading</dt><dd class="text-muted">Trading dengan uang palsu untuk menguji strategi. Tidak ada uang sungguhan.</dd></div>
+      <div><dt class="font-semibold">Horizon</dt><dd class="text-muted">Jendela waktu prediksi, dihitung hari bursa (Sen–Jum).</dd></div>
+      <div><dt class="font-semibold">Win-rate / ketepatan</dt><dd class="text-muted">Persentase prediksi selesai yang benar arah.</dd></div>
+      <div><dt class="font-semibold">RSI</dt><dd class="text-muted">Indikator 0–100: di bawah 30 = saham sudah turun banyak (murah), di atas 70 = sudah naik banyak (rawan koreksi).</dd></div>
+      <div><dt class="font-semibold">Arus asing</dt><dd class="text-muted">Investor luar negeri sedang beli (dana masuk = bullish) atau jual (dana keluar = bearish) saham itu.</dd></div>
+      <div><dt class="font-semibold">IHSG</dt><dd class="text-muted">Indeks Harga Saham Gabungan — "rapor" seluruh bursa Indonesia.</dd></div>
+      <div><dt class="font-semibold">Lot</dt><dd class="text-muted">Satuan beli saham di IDX = 100 lembar.</dd></div>
+      <div><dt class="font-semibold">Target</dt><dd class="text-muted">Harga yang diperkirakan tercapai dalam horizon. Tercapai = prediksi menang.</dd></div>
+      <div><dt class="font-semibold">Fundamental</dt><dd class="text-muted">Kesehatan perusahaan di balik saham: laba, utang, valuasi, dividen.</dd></div>
+      <div><dt class="font-semibold">Keyakinan terkalibrasi</dt><dd class="text-muted">Angka keyakinan sudah dikoreksi ke rekam jejak nyata mesin, bukan klaim mentah AI.</dd></div>
+    </dl>
+  </section>
+
+  <footer class="text-center text-[11px] text-muted font-mono py-6 border-t border-line">
+    Bukan nasihat keuangan. Prediksi bersifat probabilistik. Paper money only.
+  </footer>
+</main>
+</body>
+</html>
