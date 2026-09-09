@@ -110,7 +110,7 @@ negosiasi antar-agen.
 ## Cara menjalankan (Windows)
 
 ```powershell
-cd C:\Users\LENOVO\Documents\Prediction
+cd prediction-backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
