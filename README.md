@@ -5,8 +5,8 @@ peran prompt (Analyst + Trader/CTO) plus dewan pemungut suara opsional — yang 
 mengambil data harga live, berita lokal & global, lalu memprediksi arah (naik/turun) +
 persentase keyakinan + horizon hari, dan **paper-trading** (uang palsu) untuk mengukur diri.
 
-> Istilah jujur: ini **bukan** sistem multi-agent otonom. Lihat bagian
-> [Apakah ini "multi-agent"?](#apakah-ini-multi-agent) — jawabannya tidak, dan alasannya di sana.
+> Istilah jujur: ini **bukan** sistem multi-agent otonom. Yang mengatur alur adalah kode,
+> bukan negosiasi antar-agen.
 
 > **Bukan nasihat keuangan.** Prediksi bersifat probabilistik. Tidak ada jaminan profit.
 > Tujuan sistem ini: alat bantu keputusan + eksperimen yang bisa kita tune terus tiap hari.
@@ -104,31 +104,6 @@ app/
 Catatan penting: langkah 1–6 adalah **kontrol-flow Python di `orchestrator._decide_for`**, bukan
 agen yang memutuskan sendiri kapan saling memanggil. Yang mengatur alur adalah `if`/`while`, bukan
 negosiasi antar-agen.
-
----
-
-## Apakah ini "multi-agent"?
-
-Dua mode (saklar `AGENT_MODE` di `.env`; A/B dibandingkan `python compare_modes.py`):
-**pipeline** (inject-all, di-skrip penuh) dan **agent** (agen memegang keputusan-keputusan kunci).
-Status per komponen di MODE AGENT — diverifikasi dari kode & uji hidup, bukan klaim:
-
-| Aspek | Status mode agent | Bukti di kode |
-|---|---|---|
-| Loop perceive→act | ADA (terbatas) — analis & CTO memanggil tool berulang sampai MEREKA berhenti; `TOOL_MAX_ROUNDS` hanya pagar anggaran | `llm._tool_loop`; analis pernah 0-2 tool-call sesuai kebutuhannya sendiri |
-| Aksi dibentuk sendiri | ADA — `check_ticker(ticker)` ber-argumen bebas: agen memeriksa saham sebanding pilihannya | `analyst._ticker_snapshot`, `_peers_brief` |
-| Routing antar-agen | ADA + backstop — CTO memutuskan sendiri `consult_council`; kalau ragu tapi melanggar normanya, skrip menegakkan (defense in depth) | `trader._decide_with_tools`; `orchestrator` backstop `ragu and not cto_consulted` |
-| Memori milik agen | ADA — tool `remember`: agen menulis catatannya sendiri per saham, dibaca lagi di analisis berikutnya | `analyst._remember`, `repo.agent_notes` |
-| Atensi milik agen | ADA (ber-cap) — tool `suggest_ticker`: agen mengantre saham lain utk siklus ini; maks `AGENT_SUGGEST_MAX` | `analyst._suggest`, drain di `run_cycle` |
-| Debat | Milik agen — `agree` = keputusan trader; `DEBATE_ROUNDS` hanya budget cap | `orchestrator._decide_for` |
-| Dewan | BERPERAN BEDA — tiap anggota menilai dari lensa berbeda (teknikal murni / kontrarian), bukan N voter identik. Jumlah panggilan sama (token setara), suara lebih independen dari analis | `council._ROLE_LENS`, `COUNCIL_MEMBERS` |
-| Identitas provider | TETAP rantai fallback — SENGAJA: identitas agen = peran + memorinya (persisten), provider hanya substrat; fallback = ketahanan | `ANALYST_TOOL_CHAIN` dll. |
-| Kapan berpikir & eksekusi uang | TETAP Python — SENGAJA: scan heuristik, kalibrasi, gate rezim, paper engine adalah pagar disiplin risiko, bukan pekerjaan LLM | `scan_market`, `_apply_regime_gate`, `trading/paper.py` |
-
-Prinsip arsitekturnya: **agen memutuskan → norma memandu → backstop menegakkan → gate & kalibrasi
-menjaga uang**. Baris "SENGAJA" bukan kekurangan — itu batas yang dipilih sadar demi token & risiko.
-Nama file PDF `Tesis_Saham_IDX_MultiAgent.pdf` memakai istilah longgar; tabel ini karakterisasi
-teknis yang akurat.
 
 ---
 
