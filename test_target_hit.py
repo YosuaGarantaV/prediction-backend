@@ -99,13 +99,16 @@ def test_bracket_symmetric_below_floor():
 
 def test_target_derived_from_expected():
     """Target LLM yang bertengkar dgn expected_pct (AKRA: exp 1.0% tapi target +11.8%) dulu
-    menang → bracket menutup di jarak 10x lipat dari yang ditampilkan. Kini target diturunkan
-    dari expected_pct."""
+    menang, sehingga bracket menutup di jarak 10x lipat dari yang ditampilkan. Kini target
+    diturunkan dari expected_pct, lalu ditarik ke fraksi harga IDX supaya benar-benar bisa
+    tersentuh: 1450 ada di pita tick Rp5, jadi 1464,5 dibulatkan naik ke 1465."""
     from app.agents import trader
     d = trader._sanitize("AKRA", {"direction": "UP", "expected_pct": 1.0,
                                   "target_price": 1621.07, "probability": 65,
                                   "horizon_days": 5}, {"price": 1450.0})
-    assert d["target_price"] == 1464.5, d["target_price"]        # 1450 * 1.01
+    assert d["target_price"] == 1465, d["target_price"]
+    assert d["target_price"] % 5 == 0, "target wajib di grid tick"
+    # expected_pct WAJIB ikut target yang sudah dibulatkan, bukan angka klaim aslinya.
     assert abs((d["target_price"] / 1450 - 1) * 100 - d["expected_pct"]) < 0.01
 
 

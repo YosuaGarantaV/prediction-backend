@@ -86,7 +86,7 @@ app/
  │   └ orchestrator.py      → SKRIP alur fetch→analisis→(dewan)→debat→keputusan→trade + evaluasi
  ├ trading/paper.py         → engine paper trading (lot 100, fee IDX)
  ├ scheduler.py             → job berkala (harga/berita/siklus agen/evaluasi)
- ├ report.py                → laporan harian (markdown) untuk di-tune Claude
+ ├ report.py                → laporan harian (markdown) berisi rekam jejak siklus
  └ web/dashboard.html       → dashboard UI/UX (dark trading terminal)
 ```
 
@@ -122,20 +122,6 @@ Buka **http://localhost:8800**
 Key provider (NVIDIA/GitHub/Groq/Cerebras/GLM/Gemini/Mistral/OpenRouter) diisi di `.env` —
 peran mana pun jalan selama minimal satu key di rantainya ada. Untuk hemat kuota / tes tanpa API,
 set `USE_LLM=false` → pipeline pakai mesin heuristik (tetap menghasilkan prediksi & trade).
-
----
-
-## Tuning harian (alur kerja dengan Claude)
-
-1. Biarkan engine jalan seharian (agen otomatis tiap `AGENT_CYCLE_MIN` menit).
-2. Sore/malam buka **Laporan harian** (tombol di dashboard) atau `http://localhost:8800/api/report`.
-   Laporan juga otomatis tersimpan di `data/logs/report_YYYYMMDD.md`.
-3. Kirim isi laporan itu ke Claude → Claude menganalisis win-rate, prediksi yang meleset,
-   dan menyarankan perbaikan aturan di **`app/agents/knowledge.py`**.
-4. Ulangi sampai akurasi membaik.
-
-Log lengkap aktivitas agen ada di tabel `agent_logs` (tampil live di dashboard) dan
-file `data/logs/engine.log`.
 
 ---
 

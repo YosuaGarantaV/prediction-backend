@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 
 import config
-from app import repo
+from app import repo, tick
 from app.agents import llm, prompts
 
 
@@ -180,7 +180,12 @@ def _sanitize(ticker: str, d: dict, quote: dict) -> dict:
     # UI membaca expected_pct sedangkan bracket penutupan awal membaca target_price → jarak
     # penutupan bisa 10x lipat dari yang ditampilkan. expected_pct yang dipertahankan karena
     # sudah tervalidasi (num(), -50..50) dan dipakai gerbang keputusan.
-    target = price * (1 + expected / 100) if price else None
+    # Target ditarik ke fraksi harga IDX (app/tick.py): harga tak pernah singgah di antara
+    # tick, jadi target berdesimal seperti 102,73 menilai sesuatu yang mustahil tersentuh.
+    # target_for juga mengembalikan expected_pct yang benar-benar sesuai target itu.
+    target, expected_real = tick.target_for(price, expected, direction)
+    if target is not None:
+        expected = expected_real
 
     return {
         "ticker": ticker,

@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 
 import config
-from app import repo
+from app import repo, tick
 
 
 # Jepit kontribusi berita ke besaran SATU term teknikal. Sebelumnya `news` (dijepit ±5) dikali
@@ -345,13 +345,20 @@ def decide(ticker: str, quote: dict, position: dict | None, cash: float,
                        f"terkalibrasi {probability:.1f}% < lantai {prob_floor:.1f}% "
                        f"(base rate UP {horizon}h + {edge_pp:.0f} pp edge minimum)")
 
+    # Target ditarik ke fraksi harga IDX. Harga tak pernah singgah di antara tick, jadi target
+    # berdesimal menilai sesuatu yang mustahil tersentuh, dan klaim yang lebih kecil dari satu
+    # tick tak punya ruang sama sekali. Lihat app/tick.py.
+    target, expected_real = tick.target_for(price, expected, direction)
+    if target is not None:
+        expected = expected_real
+
     return {
         "ticker": ticker,
         "direction": direction,
         "probability": round(probability, 1),
         "horizon_days": horizon,
         "expected_pct": expected,
-        "target_price": round(price * (1 + expected / 100), 2) if price else None,
+        "target_price": target,
         "entry_price": price,
         "action": action,
         "term": "pendek",  # heuristik = teknikal murni → jangka pendek
