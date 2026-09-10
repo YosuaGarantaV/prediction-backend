@@ -247,7 +247,8 @@ def chat_chain(chain: list[tuple[str, str]], messages: list[dict], *,
 def chat_chain_tools(chain: list[tuple[str, str]], messages: list[dict],
                      tools: list[dict], tool_impls: dict, *, max_rounds: int = 3,
                      temperature: float = 0.7, max_tokens: int = 2000,
-                     timeout: float = 45.0, want_json: bool = False) -> dict:
+                     timeout: float = 45.0, want_json: bool = False,
+                     slim_system: str | None = None) -> dict:
     """Loop tool-calling lintas rantai fallback. `tools`=skema OpenAI function; `tool_impls`=
     dict name->fn(**args)->str. Model memanggil tool sesuai KEBUTUHAN; hasil disuntik balik lalu
     model lanjut sampai jawaban final / batas putaran. `want_json`=jawaban final harus JSON
@@ -259,7 +260,7 @@ def chat_chain_tools(chain: list[tuple[str, str]], messages: list[dict],
             continue
         try:
             out = _tool_loop(provider, model, list(messages), tools, tool_impls,
-                             max_rounds, temperature, max_tokens, timeout)
+                             max_rounds, temperature, max_tokens, timeout, slim_system)
             if want_json:
                 out["json"] = extract_json(out["content"])
                 if out["json"] is None:
@@ -279,9 +280,13 @@ def chat_chain_tools(chain: list[tuple[str, str]], messages: list[dict],
 
 def _tool_loop(provider: str, model: str, messages: list[dict], tools: list[dict],
                tool_impls: dict, max_rounds: int, temperature: float,
-               max_tokens: int, timeout: float) -> dict:
+               max_tokens: int, timeout: float, slim_system: str | None = None) -> dict:
     """Satu provider: minta model, jalankan tool_calls, ulang. Putaran terakhir dipaksa
-    `tool_choice=none` → model WAJIB menjawab teks (tak menggantung di tool)."""
+    `tool_choice=none` → model WAJIB menjawab teks (tak menggantung di tool).
+
+    `slim_system`: system prompt pengganti untuk ronde 2 dan seterusnya. Riwayat dikirim
+    ULANG tiap ronde, jadi system prompt penuh dibayar berkali-kali padahal model sudah
+    membacanya di ronde 1."""
     base = config.PROVIDER_BASE.get(provider)
     key = config.PROVIDER_KEY.get(provider, "")
     if not base or not key:
@@ -318,6 +323,10 @@ def _tool_loop(provider: str, model: str, messages: list[dict], tools: list[dict
                                              "function": {"name": tc.function.name,
                                                           "arguments": tc.function.arguments}}
                                             for tc in tcs]})
+            # Rulebook cukup dibayar sekali. Ronde berikutnya memakai system ramping;
+            # hasil tool dan tesis awal tetap utuh di riwayat.
+            if slim_system and messages and messages[0].get("role") == "system":
+                messages[0] = {"role": "system", "content": slim_system}
             for tc in tcs:
                 calls += 1
                 name = tc.function.name

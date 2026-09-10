@@ -249,7 +249,7 @@ Keluarkan KEPUTUSAN HANYA dalam format JSON valid (tanpa teks lain di luar JSON)
   "ticker": "{ticker}",
   "direction": "UP" | "DOWN" | "FLAT",
   "probability": <0-100, keyakinan arah>,
-  "horizon_days": <1-10>,
+  "horizon_days": <1|3|5|20|60|120|250 sesi bursa = 1hr|3hr|1mgg|1bln|3bln|6bln|1thn>,
   "expected_pct": <perkiraan % perubahan harga, boleh negatif>,
   "target_price": <harga target>,
   "action": "BUY" | "SELL" | "HOLD",
@@ -264,7 +264,7 @@ Keluarkan KEPUTUSAN HANYA dalam format JSON valid (tanpa teks lain di luar JSON)
 "agree"=true jika sudah SEPAKAT dgn arah & argumen analis; false jika masih ragu (analis membantah lagi).
 INI KONFIRMASI ULANG setelah screening teknikal — JANGAN konfirmasi BUY hanya karena sinyal teknikal; pastikan bukti lain (fundamental/berita/arus asing/MSCI) mendukung.
 Aturan: BUY hanya jika direction=UP & probability>=60 & expected_pct > ~0.5% (biaya). SELL jika punya posisi DAN (direction=DOWN ATAU sudah waktunya take-profit/stop-loss/kelamaan). Selain itu HOLD.{f'''
-WAJIB: prediksi untuk horizon {horizon} hari bursa — set horizon_days={horizon}; expected_pct & target_price HARUS realistis untuk jendela {horizon} hari (jendela pendek = target lebih kecil & keyakinan lebih rendah).''' if horizon else ''}"""
+WAJIB: prediksi untuk horizon {horizon} hari bursa — set horizon_days={horizon}; expected_pct & target_price HARUS realistis untuk jendela {horizon} hari. Ukuran gerak WAJAR yang benar-benar terjadi di saham likuid IDX (median, diukur dari data): 1 hari 1,5% | 3 hari 2,8% | 5 hari 3,7% | 20 hari 8,3% | 60 hari 15,4% | 120 hari 24,3% | 250 hari 29,7%. Target di bawah median jendelanya = klaim yang tenggelam di derau; target jauh di atasnya = klaim yang jarang terjadi.''' if horizon else ''}"""
 
 
 def analyst_rebuttal_system() -> str:
@@ -276,6 +276,22 @@ def analyst_rebuttal_system() -> str:
             "lebih baik daripada ngotot), dan dasarkan semua pada data yang sudah ada di tesis "
             "(teknikal/fundamental/berita/arus asing/makro) — JANGAN mengarang data baru. "
             "Jaga keyakinan tetap rendah hati (overconfidence = musuh utama). Balas ringkas.")
+
+
+def analyst_tool_followup_system() -> str:
+    """System RAMPING untuk putaran tool ke-2 dan seterusnya.
+
+    Loop tool mengirim ULANG seluruh riwayat tiap ronde, termasuk system prompt penuh yang
+    87% isinya KNOWLEDGE_BASE. Diukur 2026-09-10: analis memakai 9.733 token prompt rata-rata
+    dan 71% seluruh belanja token engine. Model sudah membaca rulebook itu di ronde 1 dan
+    hasil tool sudah ada di riwayat; ronde berikutnya cuma perlu kontrak keluaran.
+    """
+    return ("Kamu ANALYST saham IDX yang disiplin & terkalibrasi. Lanjutkan analisis dengan "
+            "data yang SUDAH ada di percakapan ini: aturan, teknikal, berita, dan hasil tool "
+            "yang kamu panggil. JANGAN mengarang data baru, dan jangan mengulang isi rulebook. "
+            "Panggil tool lagi hanya kalau ada yang benar-benar belum kamu ketahui. Tutup "
+            "dengan tesis final: arah, alasan utama, risiko yang membatalkannya. "
+            "Jaga keyakinan rendah hati.")
 
 
 def analyst_rebuttal_prompt(ticker: str, prior_view: str, trader_critique: str) -> str:

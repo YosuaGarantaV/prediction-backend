@@ -7,6 +7,7 @@ import json
 
 import config
 from app import repo, tick
+from app import eval as _eval
 from app.agents import llm, prompts
 
 
@@ -191,8 +192,9 @@ def _sanitize(ticker: str, d: dict, quote: dict) -> dict:
         "ticker": ticker,
         "direction": direction,
         "probability": num("probability", 50, 0, 100),
-        # cap 10 = kontrak prompt (<1-10>); dulu 30 → groq pernah loloskan 14 (2026-07-04)
-        "horizon_days": int(num("horizon_days", 3, 1, 10)),
+        # Batas atas = eval.MAX_HORIZON (250 sesi = 1 tahun). Dulu 10, sehingga horizon
+        # bulanan yang diminta prompt akan dipangkas diam-diam jadi 10.
+        "horizon_days": int(num("horizon_days", 3, 1, _eval.MAX_HORIZON)),
         "expected_pct": round(expected, 2),
         "target_price": round(float(target), 2) if target else None,
         "entry_price": price,

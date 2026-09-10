@@ -315,7 +315,8 @@ def _analyze_with_tools(ticker: str, quote: dict, note: str | None, horizon: int
     ]
     out = llm.chat_chain_tools(config.ANALYST_TOOL_CHAIN, messages, specs, impls,
                                max_rounds=config.TOOL_MAX_ROUNDS,
-                               timeout=config.ANALYST_TOOL_TIMEOUT)
+                               timeout=config.ANALYST_TOOL_TIMEOUT,
+                               slim_system=prompts.analyst_tool_followup_system())
     view = out["content"].strip()
     trace = out.get("trace") or []
     # Log menyebut LANGKAH KERJANYA, bukan cuma jumlah panggilan: tool apa, dicari apa.

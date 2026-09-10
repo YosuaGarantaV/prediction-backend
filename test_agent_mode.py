@@ -259,3 +259,46 @@ if __name__ == "__main__":
     test_agent_attention_queue()
     print("ALL OK - mode agent tahan: tool hantu, tool meledak, budget habis, arg rusak,")
     print("JSON rusak lintas provider, CTO & analis fallback mulus.")
+
+def test_tool_loop_ganti_system_ramping_setelah_ronde1():
+    """Riwayat dikirim ULANG tiap ronde tool, jadi system prompt penuh dibayar berkali-kali.
+    Ronde 2+ harus memakai system ramping; rulebook cukup sekali di ronde 1."""
+    from app.agents import llm
+    dilihat = []
+
+    class _Fn:
+        def __init__(self, n, a): self.name, self.arguments = n, a
+
+    class _TC:
+        def __init__(self): self.id, self.type, self.function = "c1", "function", _Fn("get_x", "{}")
+
+    class _Msg:
+        def __init__(self, tcs, content=""): self.tool_calls, self.content = tcs, content
+
+    class _Resp:
+        def __init__(self, msg): self.choices = [type("C", (), {"message": msg})()]; self.usage = None
+
+    ronde = {"n": 0}
+
+    def fake_create(client, key, **kw):
+        dilihat.append(kw["messages"][0]["content"])
+        ronde["n"] += 1
+        return _Resp(_Msg([_TC()]) if ronde["n"] == 1 else _Msg(None, "tesis final"))
+
+    llm._create = fake_create
+    llm._cooling = lambda p: False
+    llm._client = lambda b, k: object()
+    import config
+    config.PROVIDER_BASE["_t"] = "http://x"
+    config.PROVIDER_KEY["_t"] = "k"
+    msgs = [{"role": "system", "content": "RULEBOOK PANJANG " * 200},
+            {"role": "user", "content": "analisis BBCA"}]
+    out = llm._tool_loop("_t", "m", list(msgs), [], {"get_x": lambda: "9"},
+                         2, 0.7, 100, 30, slim_system="RAMPING")
+    assert out["content"] == "tesis final"
+    assert len(dilihat) == 2, dilihat
+    assert dilihat[0].startswith("RULEBOOK"), "ronde 1 wajib bawa rulebook penuh"
+    assert dilihat[1] == "RAMPING", "ronde 2 wajib sudah ramping"
+    assert len(dilihat[1]) < len(dilihat[0]) / 10
+    print("tool loop: system ramping dipakai sejak ronde 2 ok")
+

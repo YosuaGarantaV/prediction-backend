@@ -113,10 +113,11 @@ def main(dbpath: str, bets_only: bool = False) -> None:
     # --bets-only menyamakan populasinya dengan papan skor.
     where = ("where outcome in ('win','loss') and actual_pct is not null"
              + (" and reasoning not like 'prediksi 1-hari%'" if bets_only else ""))
-    bets = [dict(zip(("id", "tk", "d", "dir", "h", "outcome", "actual", "entry", "prob"), b))
+    bets = [dict(zip(("id", "tk", "d", "dir", "h", "outcome", "actual", "entry", "prob",
+                      "exp"), b))
             for b in conn.execute(
                 "select id, ticker, substr(ts,1,10), direction, horizon_days, outcome, "
-                "actual_pct, entry_price, probability from predictions " + where)]
+                "actual_pct, entry_price, probability, expected_pct from predictions " + where)]
     if not bets:
         raise SystemExit("tak ada taruhan tuntas")
     first = min(b["d"] for b in bets)
@@ -140,7 +141,8 @@ def main(dbpath: str, bets_only: bool = False) -> None:
                      "win": b["outcome"] == "win", "base": cache[key],
                      "edge": a if b["dir"] == "UP" else -a if b["dir"] == "DOWN" else -abs(a),
                      "vol": exante_vol(series.get(b["tk"], []), b["d"]),
-                     "entry": b["entry"] or 0, "prob": b["prob"] or 0})
+                     "entry": b["entry"] or 0, "prob": b["prob"] or 0,
+                     "exp": b["exp"] or 0})
     print(f"{len(rows)} taruhan terpakai dari {len(bets)} ({skipped} tanpa dasar cocok), "
           f"{len(liquid)} saham likuid jadi pembanding")
 
@@ -159,6 +161,10 @@ def main(dbpath: str, bets_only: bool = False) -> None:
                                    *split(lambda r: (r["vol"] or 0) > 5 and r["dir"] != "FLAT"))
     results["FLAT_LIAR"] = _report("kandidat 1b: FLAT hanya di saham liar (vol > 5%)",
                                    *split(lambda r: r["dir"] == "FLAT" and (r["vol"] or 0) > 5))
+    results["KLAIM_BESAR"] = _report("kandidat 5: blokir klaim >= 3% (paling berani)",
+                                     *split(lambda r: abs(r["exp"] or 0) >= 3))
+    results["KLAIM_KECIL"] = _report("kandidat 6: blokir klaim < 0,75% (paling kecil)",
+                                     *split(lambda r: 0 < abs(r["exp"] or 0) < 0.75))
     results["FLAT_TENANG"] = _report("kandidat 1c: FLAT di saham tenang (vol <= 5%)",
                                      *split(lambda r: r["dir"] == "FLAT"
                                             and (r["vol"] or 0) <= 5))

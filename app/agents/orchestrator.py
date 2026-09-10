@@ -25,9 +25,25 @@ STYLE_NOTE = {
     "swing": ("GAYA SWING (otomatis — default pasar Indonesia yang relatif tak terduga): "
               "jendela 3-5 hari bursa. Fokus tren beberapa hari, level support/resistance, "
               "dan katalis minggu ini."),
-    "invest": ("GAYA INVESTASI (otomatis — saham TERBUKTI stabil & berkualitas): jendela ~10 "
-               "hari bursa (maks). Bobotkan FUNDAMENTAL (valuasi PER/PBV, ROE, growth, dividen, "
+    "invest": ("GAYA INVESTASI (otomatis — saham TERBUKTI stabil & berkualitas): jendela ~20 "
+               "hari bursa (1 bulan). Bobotkan FUNDAMENTAL (valuasi PER/PBV, ROE, growth, dividen, "
                "konsensus analis) DI ATAS teknikal; abaikan noise harian. Nilai kelayakan hold."),
+    "kuartal": ("GAYA KUARTALAN: jendela 60 hari bursa (~3 bulan). Teknikal harian hampir tak "
+                "relevan di rentang ini. Yang menentukan: siklus laba kuartalan dan panduan "
+                "manajemen, harga komoditas atau kurs yang menggerakkan sektornya, aksi korporasi "
+                "yang sudah diumumkan, dan arah suku bunga. Sebutkan KATALIS BERTANGGAL yang kamu "
+                "harapkan terjadi di dalam jendela, dan apa yang membatalkan tesis."),
+    "semester": ("GAYA SEMESTERAN: jendela 120 hari bursa (~6 bulan). Nilai posisi kompetitif, "
+                 "arah margin, belanja modal, dan neraca. Base rate periode ini menunjukkan "
+                 "MAYORITAS saham likuid TURUN pada jendela 3-6 bulan, jadi tesis NAIK butuh "
+                 "alasan spesifik emiten, bukan optimisme pasar. Sebutkan dua atau tiga pemicu "
+                 "yang harus terjadi berurutan."),
+    "tahunan": ("GAYA TAHUNAN: jendela 250 hari bursa (~1 tahun). Ini tesis investasi, bukan "
+                "prediksi harga. Bertumpu pada pertumbuhan laba multi-tahun, kualitas manajemen, "
+                "struktur industri, dan valuasi terhadap rata-rata historisnya sendiri. "
+                "JUJUR SOAL BATAS: riwayat harga engine baru ~14 bulan, jadi base rate 1 tahun "
+                "diukur dari satu rezim saja. Nyatakan keyakinan rendah dan tulis apa yang perlu "
+                "diamati tiap kuartal untuk menguji tesisnya."),
 }
 _focus_last: dict[str, float] = {}  # ticker → epoch analisis fokus terakhir (throttle token)
 

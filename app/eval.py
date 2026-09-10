@@ -52,11 +52,29 @@ FEE_ROUNDTRIP = (config.FEE_BUY + config.FEE_SELL) * 100  # % beli+jual round-tr
 # ponytail: tetap tabel statis + refresh manual (desain asli: perubahan angka acuan lewat mata
 # manusia). BASELINE_MEASURED disurfacing lewat agent_skill() supaya basi ketahuan sendiri.
 BASELINE_MEASURED = "2026-08-24"
+# Horizon panjang diukur 2026-09-10 dari 270 saham likuid, riwayat harga 2025-07-15..2026-09-09,
+# ambang menang sama (|gerak| > 0,5%). Jumlah sampel ikut dicatat karena kepercayaannya jauh
+# berbeda antar baris, dan tanpa itu angka 1 tahun terbaca sama otoritatifnya dengan angka 1 hari.
+#
+# PERINGATAN yang tak boleh dihapus: riwayat harga engine baru ~14 bulan. h=250 hanya punya 257
+# sampel yang saling tumpang tindih di SATU jendela tahunan, jadi itu potret satu rezim, bukan
+# base rate tahunan yang sah. h=60 dan h=120 juga menunjukkan DOWN 56-58%, artinya mayoritas
+# saham likuid memang turun pada jendela 3-6 bulan periode ini. Perlakukan tiga baris terbawah
+# sebagai sementara, dan ukur ulang setelah riwayat bertambah.
 BASELINE_WINRATE = {
     ("UP", 1): 36.5, ("DOWN", 1): 42.6,
     ("UP", 3): 40.9, ("DOWN", 3): 47.0,
     ("UP", 5): 42.1, ("DOWN", 5): 48.3,
+    ("UP", 20): 47.7, ("DOWN", 20): 48.1,     # 1 bulan  (n=13.877, median gerak 8,3%)
+    ("UP", 60): 41.7, ("DOWN", 60): 56.4,     # 3 bulan  (n=3.917,  median gerak 15,4%)
+    ("UP", 120): 40.7, ("DOWN", 120): 58.5,   # 6 bulan  (n=1.558,  median gerak 24,3%)
+    ("UP", 250): 47.1, ("DOWN", 250): 50.6,   # 1 tahun  (n=257, TIPIS — lihat peringatan)
 }
+
+# Horizon yang boleh dipakai prediksi, dalam SESI BURSA. Nama dipakai UI & gaya fokus.
+HORIZONS = {1: "1 hari", 3: "3 hari", 5: "1 minggu", 20: "1 bulan",
+            60: "3 bulan", 120: "6 bulan", 250: "1 tahun"}
+MAX_HORIZON = max(HORIZONS)
 
 
 def baseline_for(direction: str, horizon: int) -> float:
