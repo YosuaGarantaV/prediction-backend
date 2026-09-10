@@ -11,6 +11,7 @@ from openai import OpenAI, RateLimitError, InternalServerError
 
 import config
 from app import repo
+from app.agents import budget
 
 _clients: dict[str, OpenAI] = {}
 
@@ -64,6 +65,13 @@ _cb_timeouts: dict[str, int] = {}  # provider -> timeout beruntun (2 baru men-tr
 
 class _Cooling(Exception):
     """Provider sedang cooldown → di-skip tanpa panggil API (bukan error nyata)."""
+
+
+class _Habis(_Cooling):
+    """Pagu token harian tercapai → panggilan berikutnya ditolak (bukan error provider).
+
+    Turunan _Cooling supaya SELURUH jalur chain/dewan yang sudah menangani cooldown ikut
+    menanganinya: provider dilewati tanpa dianggap rusak dan tanpa men-trip breaker."""
 
 
 # --- Peredam log kegagalan provider ---
@@ -196,6 +204,7 @@ def chat_provider(provider: str, model: str, messages: list[dict], *,
     # model reasoning kadang taruh jawaban di reasoning_content & content kosong → jangan kosong.
     if not content.strip():
         content = getattr(msg, "reasoning", None) or getattr(msg, "reasoning_content", None) or ""
+    resp, content = _sambung(client, provider, kw, resp, content)
     out = {"content": content, "provider": provider, "model": model}
     if want_json:
         out["json"] = extract_json(content)
@@ -209,12 +218,58 @@ def _log_usage(provider: str, model: str, resp: Any, content: str) -> None:
     p_tok = getattr(u, "prompt_tokens", None) if u else None
     c_tok = getattr(u, "completion_tokens", None) if u else None
     t_tok = getattr(u, "total_tokens", None) if u else None
+    budget.catat(t_tok)
     repo.log("llm", "usage",
               f"{provider}/{model} tokens: prompt={p_tok} completion={c_tok} total={t_tok}",
               payload={"provider": provider, "model": model, "prompt_tokens": p_tok,
                        "completion_tokens": c_tok, "total_tokens": t_tok,
                        "mode": config.ENGINE_MODE,  # A/B agent-week: token dipisah per mode
                        "output": content})
+
+
+# --- Jawaban yang kepotong di max_tokens ---
+# `finish_reason == "length"` artinya model BERHENTI karena kehabisan jatah keluaran, bukan
+# karena selesai. Sebelumnya potongan itu dipakai apa adanya: tesis analis putus di tengah
+# kalimat, dan JSON CTO putus di tengah kurung lalu dihitung "JSON gagal parse". Sekali
+# sambung sudah cukup untuk sebagian besar kasus, dan batasnya tetap ada supaya tak bisa
+# berputar tanpa akhir.
+LANJUT_MAKS = 1
+
+
+def _terpotong(resp: Any) -> bool:
+    try:
+        return getattr(resp.choices[0], "finish_reason", None) == "length"
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _sambung(client: OpenAI, provider: str, kw: dict, resp: Any, content: str) -> tuple[Any, str]:
+    """Minta model melanjutkan jawaban yang terpotong, lalu gabung. Gagal menyambung =
+    kembalikan apa adanya (potongan tetap lebih baik daripada tak ada jawaban)."""
+    for _ in range(LANJUT_MAKS):
+        if not _terpotong(resp) or not content.strip():
+            break
+        repo.log("llm", "usage", f"{provider}/{kw.get('model')}: jawaban kepotong di "
+                 f"max_tokens, menyambung", level="warn")
+        lanjut = dict(kw)
+        lanjut["messages"] = list(kw["messages"]) + [
+            {"role": "assistant", "content": content},
+            {"role": "user", "content": "Lanjutkan PERSIS dari karakter terakhir tadi. "
+                                        "Jangan mengulang bagian yang sudah kamu tulis, "
+                                        "jangan menulis pembuka baru."}]
+        lanjut.pop("tools", None)
+        lanjut.pop("tool_choice", None)
+        try:
+            resp = _create(client, provider, retries=0, **lanjut)
+        except Exception:  # noqa: BLE001
+            break
+        tambahan = resp.choices[0].message.content or ""
+        _log_usage(provider, str(kw.get("model")), resp, tambahan)
+        if not tambahan.strip():
+            break
+        content += tambahan
+        kw = lanjut
+    return resp, content
 
 
 def chat_chain(chain: list[tuple[str, str]], messages: list[dict], *,
@@ -315,6 +370,8 @@ def _tool_loop(provider: str, model: str, messages: list[dict], tools: list[dict
                 if not content.strip():
                     content = (getattr(msg, "reasoning", None)
                                or getattr(msg, "reasoning_content", None) or "")
+                # Jawaban FINAL tak boleh berhenti karena kehabisan jatah keluaran.
+                _, content = _sambung(client, provider, kw, resp, content)
                 return {"content": content, "provider": provider, "model": model,
                         "tool_calls": calls, "trace": trace}
             # sisipkan pesan asisten (berisi tool_calls) lalu hasil tiap tool
@@ -354,6 +411,10 @@ def _tool_loop(provider: str, model: str, messages: list[dict], tools: list[dict
 def _create(client: OpenAI, throttle_key: str, *, retries: int | None = None, **kw):
     """Panggil API dengan throttle per-provider + retry/backoff pada 429.
     `retries`=0 → gagal CEPAT (dipakai dewan & dalam chain: ada fallback, jangan tunggu backoff)."""
+    # Pagu harian diperiksa SEBELUM memanggil API. Yang dihentikan panggilan berikutnya,
+    # bukan jawaban yang sedang berjalan, jadi tak ada tesis yang terpotong di tengah.
+    if budget.habis():
+        raise _Habis(f"{throttle_key}: pagu token harian habis (reset 00:00 WIB)")
     n = config.LLM_MAX_RETRIES if retries is None else retries
     last_err = None
     for attempt in range(n + 1):

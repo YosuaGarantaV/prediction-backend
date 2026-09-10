@@ -39,7 +39,7 @@ python run.py                 # http://localhost:8800
 ### Test
 
 ```bash
-pytest -q
+pytest -q          # test ada di tests/, jalan dari root maupun folder lain
 ```
 
 Klon bersih memberi **226 passed, 5 skipped**. Lima yang di-skip butuh data yang tidak ikut
@@ -54,6 +54,7 @@ Tiga alat bacanya:
 | perintah | menjawab |
 |---|---|
 | `python tools/provider_audit.py` | provider mana yang benar-benar hidup hari ini |
+| `curl localhost:8800/api/health` | sisa pagu token hari ini (reset 00:00 WIB) |
 | `python tools/error_gap.py --bets-only` | di emiten dan kondisi mana edge hilang |
 | `python tools/gate_trial.py --bets-only` | apakah kandidat gerbang baru benar-benar layak |
 | `python basecheck.py` | win-rate vs dasar pasar yang dicocokkan per tanggal |

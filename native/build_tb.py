@@ -4,7 +4,7 @@ Jalankan:  python native/build_tb.py
 Butuh compiler C++: Windows = "MSVC Build Tools" (Desktop C++), Linux/Mac = gcc/clang.
 TANPA compiler tak masalah: app/label.py otomatis pakai numpy (hasil identik, lebih lambat).
 
-Verifikasi setelah kompilasi:  python test_triple_barrier.py   (native == numpy)
+Verifikasi setelah kompilasi:  python tests/test_triple_barrier.py   (native == numpy)
 """
 from cffi import FFI
 

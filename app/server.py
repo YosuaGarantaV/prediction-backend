@@ -335,7 +335,7 @@ def usage():
 def health():
     """Kesehatan sistem: kesegaran tiap sumber data + provider LLM yang sedang cooldown +
     IHSG (deteksi data-basi). Panel ini menangkap bug seperti IHSG-berhenti-update lebih awal."""
-    from app.agents import memo, llm
+    from app.agents import memo, llm, budget
     from app.data import price_guard
     fresh = repo.source_freshness()
     ihsg = next((m for m in repo.all_macro() if m.get("symbol") == "^JKSE"), None)
@@ -345,6 +345,7 @@ def health():
         "cooldowns": llm.cooldowns(),
         "memo": memo.stats(),
         "price_guard": price_guard.status(),
+        "token_budget": budget.status(),
         "ihsg": {"price": ihsg["price"], "change_pct": ihsg["change_pct"], "ts": ihsg["ts"]} if ihsg else None,
     }
 

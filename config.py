@@ -615,6 +615,12 @@ CB_COOLDOWN_DAY = _env_int("CB_COOLDOWN_DAY_S", 7200)  # "per day/daily" limit â
 # serta baru menyala pada timeout kedua beruntun (lihat llm._trip).
 CB_TIMEOUT_COOLDOWN = _env_int("CB_TIMEOUT_COOLDOWN_S", 30)
 
+# Pagu token LLM per hari, dihitung menurut WIB dan di-reset 00:00 WIB. 0 = tanpa batas.
+# Yang dihentikan adalah panggilan BERIKUTNYA; panggilan yang sedang jalan dibiarkan selesai
+# supaya tak ada jawaban yang terpotong di tengah. Sumber hitungan = agent_logs phase='usage',
+# jadi selamat dari restart.
+DAILY_TOKEN_BUDGET = _env_int("DAILY_TOKEN_BUDGET", 4_000_000)
+
 # --- Auth dashboard (login web, lihat app/auth.py) ---
 # SESSION_SECRET menandatangani cookie sesi (Starlette SessionMiddleware). WAJIB diisi di
 # produksi; kosong -> server pakai secret acak per-proses (sesi putus tiap restart).
