@@ -527,7 +527,7 @@ UNIVERSE_FILE = DATA_DIR / "idx_universe.txt"  # daftar ticker (1 per baris) ove
 # tiga gaya panjang ditambahkan; base rate tiap horizon ada di app.eval.BASELINE_WINRATE
 # (baris 60/120/250 masih tipis, lihat peringatan di sana).
 FOCUS_STYLES = {"scalp": 1, "swing": 5, "invest": 20,
-                "kuartal": 60, "semester": 120, "tahunan": 250}  # invest maks 10 hari bursa (pasar ID tak terduga)
+                "kuartal": 60, "semester": 120, "tahunan": 250}  # naskah skripsi: invest 10, tiga gaya panjang belum ada
 # Throttle re-analisis LLM per gaya (menit) — fokus ≠ bakar token tiap 12 menit.
 FOCUS_REFRESH_MIN = {"scalp": 45, "swing": 180, "invest": 720}
 
