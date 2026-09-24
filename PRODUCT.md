@@ -18,7 +18,8 @@ Konteks pemakaian: laptop Windows, browser, cek pagi sebelum bursa buka dan sore
 
 ## Product Purpose
 
-Mesin prediksi saham IDX multi-agent (LLM analyst + trader + dewan) yang berjalan 24 jam:
+Sistem multi-agen terpusat berbasis LLM untuk saham IDX (enam peran agen: analis, trader,
+dewan teknikal, dewan kontrarian, sentimen, evaluator; gerbang deterministik di luar model) yang berjalan 24 jam:
 scan seluruh bursa, prediksi arah + keyakinan + horizon, dan paper-trading untuk mengukur diri.
 Sukses = pengguna baru paham dalam 30 detik apa yang aplikasi katakan hari ini (sinyal teratas +
 alasannya), dan operator bisa menelusuri detail sedalam apa pun tanpa menyesaki halaman utama.
